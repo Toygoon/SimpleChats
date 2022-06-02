@@ -3,24 +3,24 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define BUF_SIZE 1000
+
 static WINDOW *logFrame, *cmdFrame;
 
 int main(int argc, char *argv[]) {
     // width, height : 가로, 세로 크기 (문자 단위)
     // cmdFrameLeftMargin : 명령어 입력 WINDOW의 왼쪽 크기
-    int width, height, cmdFrameLeftMargin = 3;
+    int width, height, cmdFrameLeftMargin = 3, logFrameCurrent = 0;
 
     // 명령어 입력에 사용될 버퍼
-    char buffer[1000];
+    char buffer[BUF_SIZE];
 
     // 화면 초기화, 설정
     initscr();
 
-    // KeyboardInterrupt(^C)가 작동하도록 설정
-    cbreak();
-
     // 현재 Terminal의 크기 계산
     getmaxyx(stdscr, height, width);
+    int logFrameMaxLine = height - cmdFrameLeftMargin - 2;
 
     // Frame 설정
     logFrame = newwin(height - cmdFrameLeftMargin, width, 0, 0);
@@ -31,7 +31,7 @@ int main(int argc, char *argv[]) {
     box(cmdFrame, 0, 0);
 
     // 환영 메시지 출력
-    mvwprintw(logFrame, 1, 1, "Field");
+    mvwprintw(logFrame, ++logFrameCurrent, 1, "Field");
 
     // 정의한 Frame을 출력하도록 설정
     wrefresh(stdscr);
@@ -50,6 +50,18 @@ int main(int argc, char *argv[]) {
         move(height - cmdFrameLeftMargin + 1, 5);
         // fgets와 동일, 문자열 입력
         getstr(buffer);
+
+        // logFrame이 가득차면 기존 WINDOW 삭제 후 초기화
+        if (logFrameCurrent >= logFrameMaxLine) {
+            logFrame = newwin(height - cmdFrameLeftMargin, width, 0, 0);
+            box(logFrame, 0, 0);
+
+            logFrameCurrent = 0;
+        }
+
+        // logFrame에 출력
+        mvwprintw(logFrame, ++logFrameCurrent, 1, "%s", buffer);
+        wrefresh(logFrame);
     }
 
     // 종료
