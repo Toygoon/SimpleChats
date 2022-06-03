@@ -4,8 +4,6 @@
  * Department of Computer Engineering, Yeungnam University.
  */
 
-// gcc `pkg-config --cflags gtk4` -o server server.c `pkg-config --libs gtk4`
-
 #include <gtk/gtk.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
