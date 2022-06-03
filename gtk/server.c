@@ -1,3 +1,9 @@
+/* Server for SimpleChats
+ *
+ * @author Lim Jung Min,
+ * Department of Computer Engineering, Yeungnam University.
+ */
+
 // gcc `pkg-config --cflags gtk4` -o server server.c `pkg-config --libs gtk4`
 
 #include <gtk/gtk.h>
@@ -23,11 +29,12 @@
 static void manageWindow(GtkApplication *, gpointer);
 static void portWindow(GtkApplication *, gpointer);
 gint deleteEvent(GtkWidget *, GdkEvent *, gpointer);
-static void parsePortText(GtkApplication *, gpointer);
+static void getPortText(GtkApplication *, gpointer);
 void *handleClient(void *);
 void sendMsg(char *, int);
 void handleError(char *);
 void *startServer(void *);
+void logger(char *);
 
 int clientCount = 0, totalChannels = 0;
 int clientSockets[MAX_CLIENT];
@@ -36,29 +43,25 @@ pthread_mutex_t mutx;
 char buf[BUF_SIZE];
 int serverSocket, clientSocket;
 struct sockaddr_in servAddr, clientAddr;
-int clientAddrSz, portNum = 0;
+int clientAddrSz, portNum = 7777;
 pthread_t threadId, serverThread;
 
+GtkApplication *app;
+GtkWidget *portWin;
 GtkWidget *logText;
 GtkTextBuffer *textBuffer;
+GtkWidget *portInputEntry;
 
 int main(int argc, char **argv) {
-    GtkApplication *app;
-
     app = gtk_application_new("com.toygoon.simplechat", G_APPLICATION_FLAGS_NONE);
-    /*
-    pthread_create(&serverThread, NULL, startServer, NULL);
-    pthread_detach(serverThread);
-    */
 
-    g_signal_connect(app, "activate", G_CALLBACK(portWindow), NULL);
+    //g_signal_connect(app, "activate", G_CALLBACK(portWindow), NULL);
+    g_signal_connect(app, "activate", G_CALLBACK(manageWindow), NULL);
     g_application_run(G_APPLICATION(app), argc, argv);
     g_object_unref(app);
 
     return 0;
 }
-
-
 
 gboolean closeRequest(GtkWindow* window, gpointer user_data) {
     close(serverSocket);
@@ -69,19 +72,27 @@ gboolean closeRequest(GtkWindow* window, gpointer user_data) {
 
 void *startServer(void *arg) {
     pthread_mutex_init(&mutx, NULL);
+    logger("[INFO] Initiating server socket.\n");
     serverSocket = socket(PF_INET, SOCK_STREAM, 0);
 
+    logger("[INFO] Generating socket address struct.\n");
     memset(&servAddr, 0, sizeof(servAddr));
     servAddr.sin_family = AF_INET;
     servAddr.sin_addr.s_addr = htonl(INADDR_ANY);
+
+    logger("[INFO] Setting a port number.\n");
     servAddr.sin_port = htons(portNum);
 
-    if (bind(serverSocket, (struct sockaddr *)&servAddr, sizeof(servAddr)) == -1)
-        handleError("bind() error");
-    if (listen(serverSocket, 5) == -1)
-        handleError("listen() error");
+    if (bind(serverSocket, (struct sockaddr *)&servAddr, sizeof(servAddr)) == -1) {
+        logger("[ERROR] bind error, choose another port.\n");
+        return false;
+    }
+    if (listen(serverSocket, 5) == -1) {
+        logger("[ERROR] listen error, please free up your memory.\n");
+        return false;
+    }
 
-    g_print("Server started");
+    logger("[INFO] Server has started.\n");
 
     while (1) {
         clientAddrSz = sizeof(clientAddr);
@@ -93,27 +104,31 @@ void *startServer(void *arg) {
 
         pthread_create(&threadId, NULL, handleClient, (void *)&clientSocket);
         pthread_detach(threadId);
-        g_print("Connected client IP: %s \n", inet_ntoa(clientAddr.sin_addr));
+        char tmp[BUF_SIZE] = "[CLIENT] Connected client IP: ";
+        strcat(tmp, inet_ntoa(clientAddr.sin_addr));
+        strcat(tmp, "\n");
+        logger(tmp);
     }
 }
 
-static void parsePortText(GtkApplication *app , gpointer user_data) {
-    const gchar *entry_text1 = gtk_entry_buffer_get_text(user_data);
-    g_print ("Hello again - %s was pressed\n", entry_text1);
+static void getPortText(GtkApplication *_app , gpointer user_data) {
+    GtkEntryBuffer* entryBuffer = gtk_entry_get_buffer((GtkEntry*)portInputEntry);
+    const char *text = gtk_entry_buffer_get_text(entryBuffer);
+    portNum = atoi(text);
 
+    g_print("Port number has set to %d\n", portNum);
+    manageWindow(app, NULL);
 }
 
 static void portWindow(GtkApplication *app, gpointer user_data) {
-    GtkWidget *window;
     GtkWidget *button;
     GtkWidget *portInputLabel;
-    GtkWidget *portInputEntry;
     GtkWidget *grid;
     gchar *text;
 
-    window = gtk_application_window_new(app);
-    gtk_window_set_title(GTK_WINDOW(window), "Port");
-    gtk_window_set_default_size(GTK_WINDOW(window), PORT_WIN_WIDTH, PORT_WIN_HEIGHT);
+    portWin = gtk_application_window_new(app);
+    gtk_window_set_title(GTK_WINDOW(portWin), "Port");
+    gtk_window_set_default_size(GTK_WINDOW(portWin), PORT_WIN_WIDTH, PORT_WIN_HEIGHT);
 
     portInputLabel = gtk_label_new("Port Number : ");
     portInputEntry = gtk_entry_new();
@@ -127,19 +142,28 @@ static void portWindow(GtkApplication *app, gpointer user_data) {
     gtk_grid_set_row_spacing(GTK_GRID(grid), margin);
     gtk_grid_set_column_spacing(GTK_GRID(grid), margin);
 
-    gtk_window_set_child(GTK_WINDOW(window), grid);
+    gtk_window_set_child(GTK_WINDOW(portWin), grid);
 
     button = gtk_button_new_with_label("OK");
-    g_signal_connect (button, "clicked", G_CALLBACK (parsePortText), (gpointer) portInputEntry);
-    
+    g_signal_connect(button, "clicked", G_CALLBACK(getPortText), portWin);
+
     gtk_grid_attach(GTK_GRID(grid), portInputLabel, 0, 0, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), portInputEntry, 1, 0, 2, 1);
     gtk_grid_attach(GTK_GRID(grid), button, 0, 2, 3, 1);
 
-    gtk_widget_show(window);
+    gtk_widget_show(portWin);
+}
+
+void logger(char* msg) {
+    GtkTextIter end;
+    textBuffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(logText));
+    gtk_text_buffer_get_end_iter (textBuffer, &end);
+
+    gtk_text_buffer_insert (textBuffer, &end, msg, -1);
 }
 
 static void manageWindow(GtkApplication *app, gpointer user_data) {
+    // gtk_window_destroy((GtkWindow*)portWin);
     GtkWidget *window;
     GtkWidget *button;
     GtkWidget *grid;
@@ -165,14 +189,16 @@ static void manageWindow(GtkApplication *app, gpointer user_data) {
 
     button = gtk_button_new_with_label("a");
     gtk_widget_set_size_request(button, 10, 10);
-    g_signal_connect_swapped(button, "clicked", G_CALLBACK(closeRequest), window);
-    
+    g_signal_connect_swapped(button, "clicked", G_CALLBACK(logger), NULL);
+
     gtk_grid_attach(GTK_GRID(grid), logText, 0, 0, 5, 5);
     gtk_grid_attach(GTK_GRID(grid), button, 0, 5, 1, 1);
 
     gtk_widget_show(window);
-}
 
+    pthread_create(&serverThread, NULL, startServer, NULL);
+    pthread_detach(serverThread);
+}
 
 void *handleClient(void *arg) {
     int clientSocket = *((int *)arg);
@@ -205,10 +231,4 @@ void sendMsg(char *msg, int len) {
     for (i = 0; i < clientCount; i++)
         write(clientSockets[i], msg, len);
     pthread_mutex_unlock(&mutx);
-}
-
-void handleError(char *msg) {
-    fputs(msg, stderr);
-    fputc('\n', stderr);
-    exit(1);
 }
