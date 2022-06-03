@@ -6,13 +6,14 @@ SERVER_APP = server
 
 # Compiler Settings
 CC := gcc
-CFLAGS := -lpthread
+CFLAGS := `pkg-config --cflags gtk4`
+LFLAGS := `pkg-config --libs gtk4`
 
 all: server client
 
 server:
 	mkdir -p $(BUILD_DIR)
-	$(CC) $(SRC_DIRS)/$(SERVER_APP).c -o $(BUILD_DIR)/$(SERVER_APP).out $(CFLAGS)
+	$(CC) $(CFLAGS) -o $(BUILD_DIR)/$(SERVER_APP).out $(SRC_DIRS)/$(SERVER_APP).c $(LFLAGS)
 
 client:
 	mkdir -p $(BUILD_DIR)
