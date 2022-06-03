@@ -1,4 +1,4 @@
-/* Server for SimpleChats
+/* Client for SimpleChats
  *
  * @author Lim Jung Min,
  * Department of Computer Engineering, Yeungnam University.
