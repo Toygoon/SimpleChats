@@ -53,8 +53,8 @@ GtkWidget *portInputEntry;
 int main(int argc, char **argv) {
     app = gtk_application_new("com.toygoon.simplechat", G_APPLICATION_FLAGS_NONE);
 
-    //g_signal_connect(app, "activate", G_CALLBACK(portWindow), NULL);
-    g_signal_connect(app, "activate", G_CALLBACK(manageWindow), NULL);
+    g_signal_connect(app, "activate", G_CALLBACK(portWindow), NULL);
+    //g_signal_connect(app, "activate", G_CALLBACK(manageWindow), NULL);
     g_application_run(G_APPLICATION(app), argc, argv);
     g_object_unref(app);
 
@@ -63,7 +63,7 @@ int main(int argc, char **argv) {
 
 gboolean closeRequest(GtkWindow* window, gpointer user_data) {
     close(serverSocket);
-//gtk_window_destroy(window);
+    gtk_window_close(window);
 
     return FALSE;
 }
@@ -140,7 +140,7 @@ static void portWindow(GtkApplication *app, gpointer user_data) {
     gtk_grid_set_row_spacing(GTK_GRID(grid), margin);
     gtk_grid_set_column_spacing(GTK_GRID(grid), margin);
 
-    //gtk_window_set_child(GTK_WINDOW(portWin), grid);
+    gtk_container_add(GTK_CONTAINER(portWin), grid);
 
     button = gtk_button_new_with_label("OK");
     g_signal_connect(button, "clicked", G_CALLBACK(getPortText), portWin);
@@ -149,7 +149,7 @@ static void portWindow(GtkApplication *app, gpointer user_data) {
     gtk_grid_attach(GTK_GRID(grid), portInputEntry, 1, 0, 2, 1);
     gtk_grid_attach(GTK_GRID(grid), button, 0, 2, 3, 1);
 
-    gtk_widget_show(portWin);
+    gtk_widget_show_all(portWin);
 }
 
 void logger(char* msg) {
@@ -161,7 +161,7 @@ void logger(char* msg) {
 }
 
 static void manageWindow(GtkApplication *app, gpointer user_data) {
-    // gtk_window_destroy((GtkWindow*)portWin);
+    gtk_window_close((GtkWindow*)portWin);
     GtkWidget *window;
     GtkWidget *button;
     GtkWidget *grid;
@@ -170,7 +170,7 @@ static void manageWindow(GtkApplication *app, gpointer user_data) {
     gtk_window_set_title(GTK_WINDOW(window), "SimpleChat Server");
     gtk_window_set_default_size(GTK_WINDOW(window), MAIN_WIDTH, MAIN_HEIGHT);
 
-//    g_signal_connect(window, "close-request", G_CALLBACK(closeRequest), NULL);
+    g_signal_connect(window, "delete-event", G_CALLBACK(closeRequest), NULL);
 
     logText = gtk_text_view_new();
     textBuffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(logText));
@@ -187,16 +187,16 @@ static void manageWindow(GtkApplication *app, gpointer user_data) {
 
     button = gtk_button_new_with_label("a");
     gtk_widget_set_size_request(button, 10, 10);
-    g_signal_connect_swapped(button, "clicked", G_CALLBACK(logger), NULL);
+    g_signal_connect_swapped(button, "clicked", G_CALLBACK(closeRequest), window);
 
     gtk_grid_attach(GTK_GRID(grid), logText, 0, 0, 5, 5);
     gtk_grid_attach(GTK_GRID(grid), button, 0, 5, 1, 1);
 
     gtk_widget_show_all(window);
-/*
+
     pthread_create(&serverThread, NULL, startServer, NULL);
     pthread_detach(serverThread);
-    */
+    
 }
 
 void *handleClient(void *arg) {
