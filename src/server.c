@@ -53,8 +53,6 @@ GtkWidget *logText;
 GtkTextBuffer *textBuffer;
 GtkWidget *portInputEntry;
 
-Room roomInfo[MAX_ROOM];
-
 int main(int argc, char **argv) {
     app = gtk_application_new("yu.server.simplechat", G_APPLICATION_FLAGS_NONE);
     roomNames = (char **)calloc(MAX_ROOM, sizeof(char *));

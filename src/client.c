@@ -50,7 +50,6 @@ int portNum = 7777, rooms = -1;
 int clientSocket;
 struct sockaddr_in servAddr;
 pthread_t connectThread, snd_thread, receiveThread;
-Room roomInfo[MAX_ROOM];
 
 int main(int argc, char **argv) {
     app = gtk_application_new("yu.client.simplechat", G_APPLICATION_FLAGS_NONE);
