@@ -56,10 +56,6 @@ GtkWidget *portInputEntry;
 int main(int argc, char **argv) {
     app = gtk_application_new("yu.server.simplechat", G_APPLICATION_FLAGS_NONE);
     roomNames = (char **)calloc(MAX_ROOM, sizeof(char *));
-    for (int i = 0; i < MAX_ROOM; i++) {
-        roomInfo[i].roomId = i;
-        strcpy(roomInfo[i].roomName, "undefined");
-    }
 
     // g_signal_connect(app, "activate", G_CALLBACK(portWindow), NULL);
     g_signal_connect(app, "activate", G_CALLBACK(manageWindow), NULL);
