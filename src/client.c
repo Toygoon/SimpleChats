@@ -47,11 +47,6 @@ char msg[BUF_SIZE];
 char *serverIP = "127.0.0.1", *clientName = "[test]";
 int portNum = 7777, rooms = -1;
 
-typedef struct _Room {
-    int roomId;
-    char roomName[50];
-} Room;
-
 int clientSocket;
 struct sockaddr_in servAddr;
 pthread_t connectThread, snd_thread, receiveThread;

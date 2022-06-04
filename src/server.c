@@ -53,11 +53,6 @@ GtkWidget *logText;
 GtkTextBuffer *textBuffer;
 GtkWidget *portInputEntry;
 
-typedef struct _Room {
-    int roomId;
-    char roomName[50];
-} Room;
-
 Room roomInfo[MAX_ROOM];
 
 int main(int argc, char **argv) {
