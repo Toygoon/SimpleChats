@@ -63,9 +63,9 @@ int main(int argc, char **argv) {
 
 gboolean closeRequest(GtkWindow* window, gpointer user_data) {
     close(serverSocket);
-    gtk_window_destroy(window);
+//gtk_window_destroy(window);
 
-    return false;
+    return FALSE;
 }
 
 void *startServer(void *arg) {
@@ -83,11 +83,11 @@ void *startServer(void *arg) {
 
     if (bind(serverSocket, (struct sockaddr *)&servAddr, sizeof(servAddr)) == -1) {
         logger("[ERROR] bind error, choose another port.\n");
-        return false;
+        return FALSE;
     }
     if (listen(serverSocket, 5) == -1) {
         logger("[ERROR] listen error, please free up your memory.\n");
-        return false;
+        return FALSE;
     }
 
     logger("[INFO] Server has started.\n");
@@ -135,12 +135,12 @@ static void portWindow(GtkApplication *app, gpointer user_data) {
     guint margin = 5;
     grid = gtk_grid_new();
 
-    gtk_grid_set_row_homogeneous(GTK_GRID(grid), true);
-    gtk_grid_set_column_homogeneous(GTK_GRID(grid), true);
+    gtk_grid_set_row_homogeneous(GTK_GRID(grid), TRUE);
+    gtk_grid_set_column_homogeneous(GTK_GRID(grid), TRUE);
     gtk_grid_set_row_spacing(GTK_GRID(grid), margin);
     gtk_grid_set_column_spacing(GTK_GRID(grid), margin);
 
-    gtk_window_set_child(GTK_WINDOW(portWin), grid);
+    //gtk_window_set_child(GTK_WINDOW(portWin), grid);
 
     button = gtk_button_new_with_label("OK");
     g_signal_connect(button, "clicked", G_CALLBACK(getPortText), portWin);
@@ -170,7 +170,7 @@ static void manageWindow(GtkApplication *app, gpointer user_data) {
     gtk_window_set_title(GTK_WINDOW(window), "SimpleChat Server");
     gtk_window_set_default_size(GTK_WINDOW(window), MAIN_WIDTH, MAIN_HEIGHT);
 
-    g_signal_connect(window, "close-request", G_CALLBACK(closeRequest), NULL);
+//    g_signal_connect(window, "close-request", G_CALLBACK(closeRequest), NULL);
 
     logText = gtk_text_view_new();
     textBuffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(logText));
@@ -178,12 +178,12 @@ static void manageWindow(GtkApplication *app, gpointer user_data) {
     guint margin = 2;
     grid = gtk_grid_new();
 
-    gtk_grid_set_row_homogeneous(GTK_GRID(grid), true);
-    gtk_grid_set_column_homogeneous(GTK_GRID(grid), true);
+    gtk_grid_set_row_homogeneous(GTK_GRID(grid), TRUE);
+    gtk_grid_set_column_homogeneous(GTK_GRID(grid), TRUE);
     gtk_grid_set_row_spacing(GTK_GRID(grid), margin);
     gtk_grid_set_column_spacing(GTK_GRID(grid), margin);
 
-    gtk_window_set_child(GTK_WINDOW(window), grid);
+    gtk_container_add(GTK_CONTAINER(window), grid);
 
     button = gtk_button_new_with_label("a");
     gtk_widget_set_size_request(button, 10, 10);
@@ -192,10 +192,11 @@ static void manageWindow(GtkApplication *app, gpointer user_data) {
     gtk_grid_attach(GTK_GRID(grid), logText, 0, 0, 5, 5);
     gtk_grid_attach(GTK_GRID(grid), button, 0, 5, 1, 1);
 
-    gtk_widget_show(window);
-
+    gtk_widget_show_all(window);
+/*
     pthread_create(&serverThread, NULL, startServer, NULL);
     pthread_detach(serverThread);
+    */
 }
 
 void *handleClient(void *arg) {
