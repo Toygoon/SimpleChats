@@ -4,8 +4,8 @@
  * Department of Computer Engineering, Yeungnam University.
  */
 
-#include <gtk/gtk.h>
 #include <arpa/inet.h>
+#include <gtk/gtk.h>
 #include <netinet/in.h>
 #include <pthread.h>
 #include <stdio.h>
@@ -23,6 +23,7 @@
 
 #define BUF_SIZE 100
 #define MAX_CLIENT 256
+#define MAX_ROOM 10
 
 static void manageWindow(GtkApplication *, gpointer);
 static void portWindow(GtkApplication *, gpointer);
@@ -33,16 +34,18 @@ void sendMsg(char *, int);
 void handleError(char *);
 void *startServer(void *);
 void logger(char *);
+void *createNewRoom(void *);
+void createRoomButtonPressed(void);
 
-int clientCount = 0, totalChannels = 0;
+int clientCount = 0, totalRooms = 0;
 int clientSockets[MAX_CLIENT];
-pthread_mutex_t mutx;
+pthread_mutex_t clientMutex, roomMutex;
 
-char buf[BUF_SIZE];
+char buf[BUF_SIZE], **roomNames;
 int serverSocket, clientSocket;
 struct sockaddr_in servAddr, clientAddr;
 int clientAddrSz, portNum = 7777;
-pthread_t threadId, serverThread;
+pthread_t threadId, serverThread, chatRooms[MAX_ROOM];
 
 GtkApplication *app;
 GtkWidget *portWin;
@@ -50,10 +53,22 @@ GtkWidget *logText;
 GtkTextBuffer *textBuffer;
 GtkWidget *portInputEntry;
 
-int main(int argc, char **argv) {
-    app = gtk_application_new("com.toygoon.simplechat", G_APPLICATION_FLAGS_NONE);
+typedef struct _Room {
+    int roomId;
+    char roomName[50];
+} Room;
 
-    //g_signal_connect(app, "activate", G_CALLBACK(portWindow), NULL);
+Room roomInfo[MAX_ROOM];
+
+int main(int argc, char **argv) {
+    app = gtk_application_new("yu.server.simplechat", G_APPLICATION_FLAGS_NONE);
+    roomNames = (char **)calloc(MAX_ROOM, sizeof(char *));
+    for (int i = 0; i < MAX_ROOM; i++) {
+        roomInfo[i].roomId = i;
+        strcpy(roomInfo[i].roomName, "undefined");
+    }
+
+    // g_signal_connect(app, "activate", G_CALLBACK(portWindow), NULL);
     g_signal_connect(app, "activate", G_CALLBACK(manageWindow), NULL);
     g_application_run(G_APPLICATION(app), argc, argv);
     g_object_unref(app);
@@ -61,7 +76,7 @@ int main(int argc, char **argv) {
     return 0;
 }
 
-gboolean closeRequest(GtkWindow* window, gpointer user_data) {
+gboolean closeRequest(GtkWindow *window, gpointer user_data) {
     close(serverSocket);
     gtk_window_close(window);
 
@@ -69,7 +84,7 @@ gboolean closeRequest(GtkWindow* window, gpointer user_data) {
 }
 
 void *startServer(void *arg) {
-    pthread_mutex_init(&mutx, NULL);
+    pthread_mutex_init(&clientMutex, NULL);
     logger("[INFO] Initiating server socket.\n");
     serverSocket = socket(PF_INET, SOCK_STREAM, 0);
 
@@ -90,6 +105,7 @@ void *startServer(void *arg) {
         logger("[ERROR] bind error, choose another port.\n");
         return FALSE;
     }
+
     if (listen(serverSocket, 5) == -1) {
         logger("[ERROR] listen error, please free up your memory.\n");
         return FALSE;
@@ -101,9 +117,9 @@ void *startServer(void *arg) {
         clientAddrSz = sizeof(clientAddr);
         clientSocket = accept(serverSocket, (struct sockaddr *)&clientAddr, &clientAddrSz);
 
-        pthread_mutex_lock(&mutx);
+        pthread_mutex_lock(&clientMutex);
         clientSockets[clientCount++] = clientSocket;
-        pthread_mutex_unlock(&mutx);
+        pthread_mutex_unlock(&clientMutex);
 
         pthread_create(&threadId, NULL, handleClient, (void *)&clientSocket);
         pthread_detach(threadId);
@@ -114,8 +130,8 @@ void *startServer(void *arg) {
     }
 }
 
-static void getPortText(GtkApplication *_app , gpointer user_data) {
-    GtkEntryBuffer* entryBuffer = gtk_entry_get_buffer((GtkEntry*)portInputEntry);
+static void getPortText(GtkApplication *_app, gpointer user_data) {
+    GtkEntryBuffer *entryBuffer = gtk_entry_get_buffer((GtkEntry *)portInputEntry);
     const char *text = gtk_entry_buffer_get_text(entryBuffer);
     portNum = atoi(text);
 
@@ -135,7 +151,7 @@ static void portWindow(GtkApplication *app, gpointer user_data) {
 
     portInputLabel = gtk_label_new("Port Number : ");
     portInputEntry = gtk_entry_new();
-    gtk_entry_set_placeholder_text(GTK_ENTRY(portInputEntry),"Port");
+    gtk_entry_set_placeholder_text(GTK_ENTRY(portInputEntry), "Port");
 
     guint margin = 5;
     grid = gtk_grid_new();
@@ -157,18 +173,39 @@ static void portWindow(GtkApplication *app, gpointer user_data) {
     gtk_widget_show_all(portWin);
 }
 
-void logger(char* msg) {
+void logger(char *msg) {
     GtkTextIter end;
     textBuffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(logText));
-    gtk_text_buffer_get_end_iter (textBuffer, &end);
+    gtk_text_buffer_get_end_iter(textBuffer, &end);
 
-    gtk_text_buffer_insert (textBuffer, &end, msg, -1);
+    gtk_text_buffer_insert(textBuffer, &end, msg, -1);
+}
+
+void *createNewRoom(void *arg) {
+    /*
+    pthread_mutex_lock(&roomMutex);
+    clientSockets[clientCount++] = clientSocket;
+    pthread_mutex_unlock(&roomMutex);
+    */
+    int roomId = *((int *)arg);
+}
+
+void createRoomButtonPressed(void) {
+    /*
+    pthread_create(chatRooms[totalRooms], NULL, createNewRoom, totalRooms);
+    pthread_detach(chatRooms[totalRooms++]);
+    */
+
+    // rooms[totalRooms++] = room;
+    totalRooms++;
+    g_print("%d\n", totalRooms);
 }
 
 static void manageWindow(GtkApplication *app, gpointer user_data) {
     // gtk_window_close((GtkWindow*)portWin);
     GtkWidget *window;
     GtkWidget *shutdownButton;
+    GtkWidget *createRoomButton;
     GtkWidget *grid;
 
     window = gtk_application_window_new(app);
@@ -193,14 +230,17 @@ static void manageWindow(GtkApplication *app, gpointer user_data) {
     shutdownButton = gtk_button_new_with_label("Shutdown");
     g_signal_connect(shutdownButton, "clicked", G_CALLBACK(closeRequest), window);
 
+    createRoomButton = gtk_button_new_with_label("Create \nnew room");
+    g_signal_connect(createRoomButton, "clicked", G_CALLBACK(createRoomButtonPressed), window);
+
     gtk_grid_attach(GTK_GRID(grid), logText, 0, 0, 5, 5);
+    gtk_grid_attach(GTK_GRID(grid), createRoomButton, 0, 5, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), shutdownButton, 4, 5, 1, 1);
 
     gtk_widget_show_all(window);
 
     pthread_create(&serverThread, NULL, startServer, NULL);
     pthread_detach(serverThread);
-    
 }
 
 void *handleClient(void *arg) {
@@ -208,10 +248,16 @@ void *handleClient(void *arg) {
     int length = 0, i;
     char msg[BUF_SIZE];
 
-    while ((length = read(clientSocket, msg, sizeof(msg))) != 0)
-        sendMsg(msg, length);
+    for (int i = 0; i < MAX_ROOM; i++) {
+        send(clientSocket, (char *)&roomInfo[i], sizeof(Room), 0);
+    }
 
-    pthread_mutex_lock(&mutx);
+    while ((length = read(clientSocket, msg, sizeof(msg))) != 0) {
+        // sendMsg(msg, length);
+        g_print(msg);
+    }
+
+    pthread_mutex_lock(&clientMutex);
     for (i = 0; i < clientCount; i++) {
         if (clientSocket == clientSockets[i]) {
             while (i < clientCount - 1) {
@@ -223,15 +269,15 @@ void *handleClient(void *arg) {
         }
     }
     clientCount--;
-    pthread_mutex_unlock(&mutx);
+    pthread_mutex_unlock(&clientMutex);
     close(clientSocket);
     return NULL;
 }
 
 void sendMsg(char *msg, int len) {
     int i;
-    pthread_mutex_lock(&mutx);
+    pthread_mutex_lock(&clientMutex);
     for (i = 0; i < clientCount; i++)
         write(clientSockets[i], msg, len);
-    pthread_mutex_unlock(&mutx);
+    pthread_mutex_unlock(&clientMutex);
 }

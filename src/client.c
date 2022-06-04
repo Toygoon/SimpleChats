@@ -1,87 +1,183 @@
-/* Client for SimpleChats
+/* Server for SimpleChats
  *
  * @author Lim Jung Min,
  * Department of Computer Engineering, Yeungnam University.
  */
 
 #include <arpa/inet.h>
+#include <gtk/gtk.h>
+#include <netinet/in.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
+#define MAIN_WIDTH 600
+#define MAIN_HEIGHT 600
+
+#define LOGIN_WIN_WIDTH 200
+#define LOGIN_WIN_HEIGHT 100
+
 #define BUF_SIZE 100
 #define NAME_SIZE 20
+#define MAX_ROOM 10
+
+static void manageWindow(GtkApplication *, gpointer);
+static void loginWindow(GtkApplication *, gpointer);
+static void listWindow(GtkApplication *, gpointer);
+gint deleteEvent(GtkWidget *, GdkEvent *, gpointer);
+void *connectServer(void *);
+void getRoomList(void);
+
+GtkApplication *app;
+GtkWidget *loginWin;
+GtkWidget *logText;
+GtkTextBuffer *textBuffer;
+GtkWidget *inputEntries[3];
 
 char name[NAME_SIZE] = "[DEFAULT]";
 char msg[BUF_SIZE];
+char *serverIP = "127.0.0.1", *clientName = "test";
+int portNum = 7777, rooms = -1;
 
-void* send_msg(void*);
-void* recv_msg(void*);
-void error_handling(char*);
+typedef struct _Room {
+    int roomId;
+    char roomName[50];
+} Room;
 
-int main(int argc, char* argv[]) {
-    int sock;
-    struct sockaddr_in serv_addr;
-    pthread_t snd_thread, rcv_thread;
-    void* thread_return;
-    if (argc != 4) {
-        printf("Usage : %s <IP> <port> <name>\n", argv[0]);
-        exit(1);
-    }
+int clientSocket;
+struct sockaddr_in servAddr;
+pthread_t connectThread, snd_thread, rcv_thread;
+Room roomInfo[MAX_ROOM];
 
-    sprintf(name, "[%s]", argv[3]);
-    sock = socket(PF_INET, SOCK_STREAM, 0);
+int main(int argc, char **argv) {
+    app = gtk_application_new("yu.client.simplechat", G_APPLICATION_FLAGS_NONE);
 
-    memset(&serv_addr, 0, sizeof(serv_addr));
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_addr.s_addr = inet_addr(argv[1]);
-    serv_addr.sin_port = htons(atoi(argv[2]));
 
-    if (connect(sock, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) == -1)
-        error_handling("connect() error");
+    // g_signal_connect(app, "activate", G_CALLBACK(loginWindow), NULL);
+    g_signal_connect(app, "activate", G_CALLBACK(listWindow), NULL);
+    g_application_run(G_APPLICATION(app), argc, argv);
+    g_object_unref(app);
 
-    pthread_create(&snd_thread, NULL, send_msg, (void*)&sock);
-    pthread_create(&rcv_thread, NULL, recv_msg, (void*)&sock);
-    pthread_join(snd_thread, &thread_return);
-    pthread_join(rcv_thread, &thread_return);
-    close(sock);
     return 0;
 }
 
-void* send_msg(void* arg) {
-    int sock = *((int*)arg);
-    char name_msg[NAME_SIZE + BUF_SIZE];
-    while (1) {
-        fgets(msg, BUF_SIZE, stdin);
-        if (!strcmp(msg, "q\n") || !strcmp(msg, "Q\n")) {
-            close(sock);
-            exit(0);
-        }
-        sprintf(name_msg, "%s %s", name, msg);
-        write(sock, name_msg, strlen(name_msg));
-    }
-    return NULL;
+static void getLoginData(GtkApplication *_app, gpointer user_data) {
+    GtkEntryBuffer *entryBuffer = gtk_entry_get_buffer((GtkEntry *)inputEntries[0]);
+    // serverIP = gtk_entry_buffer_get_text(entryBuffer);
+
+    g_print("ip : %s\n", serverIP);
+
+    entryBuffer = gtk_entry_get_buffer((GtkEntry *)inputEntries[1]);
+    const char *text = gtk_entry_buffer_get_text(entryBuffer);
+    portNum = atoi(text);
+
+    g_print("port : %d\n", portNum);
+
+    entryBuffer = gtk_entry_get_buffer((GtkEntry *)inputEntries[2]);
+    // clientName = gtk_entry_buffer_get_text(entryBuffer);
+    g_print("name : %s\n", clientName);
+
+    listWindow(app, NULL);
 }
 
-void* recv_msg(void* arg) {
-    int sock = *((int*)arg);
-    char name_msg[NAME_SIZE + BUF_SIZE];
-    int str_len;
-    while (1) {
-        str_len = read(sock, name_msg, NAME_SIZE + BUF_SIZE - 1);
-        if (str_len == -1)
-            return (void*)-1;
-        name_msg[str_len] = 0;
-        fputs(name_msg, stdout);
+void *connectServer(void *args) {
+    clientSocket = socket(PF_INET, SOCK_STREAM, 0);
+
+    memset(&servAddr, 0, sizeof(servAddr));
+    servAddr.sin_family = AF_INET;
+    servAddr.sin_addr.s_addr = inet_addr(serverIP);
+    servAddr.sin_port = htons(portNum);
+
+    if (connect(clientSocket, (struct sockaddr *)&servAddr, sizeof(servAddr)) == -1) {
+        g_print("connection error");
+        exit(1);
     }
-    return NULL;
+
+    getRoomList();
 }
 
-void error_handling(char* msg) {
-    fputs(msg, stderr);
-    fputc('\n', stderr);
-    exit(1);
+void getRoomList(void) {
+    char tmp[BUF_SIZE];
+    for (int i = 0; i < MAX_ROOM; i++) {
+        recv(clientSocket, tmp, sizeof(Room), 0);
+        Room* room = (Room*)tmp;
+        roomInfo[i].roomId = room->roomId;
+        strncpy(roomInfo[i].roomName, room->roomName, 50);
+        g_print("%s\n", roomInfo[i].roomName);
+    }
+}
+
+gboolean closeRequest(GtkWindow *window, gpointer user_data) {
+    close(clientSocket);
+    gtk_window_close(window);
+
+    return FALSE;
+}
+
+static void listWindow(GtkApplication *app, gpointer user_data) {
+    // gtk_window_close((GtkWindow*)loginWin);
+
+    GtkWidget *window;
+    GtkWidget *shutdownButton;
+    GtkWidget *createRoomButton;
+    GtkWidget *grid;
+
+    window = gtk_application_window_new(app);
+    gtk_window_set_title(GTK_WINDOW(window), "SimpleChat Client");
+    gtk_window_set_default_size(GTK_WINDOW(window), MAIN_WIDTH, MAIN_HEIGHT);
+
+    g_signal_connect(window, "delete-event", G_CALLBACK(closeRequest), NULL);
+
+    gtk_widget_show_all(window);
+
+    pthread_create(&connectThread, NULL, connectServer, NULL);
+}
+
+static void loginWindow(GtkApplication *app, gpointer user_data) {
+    GtkWidget *button;
+    GtkWidget *inputLabels[3];
+    GtkWidget *grid;
+    gchar *text;
+
+    loginWin = gtk_application_window_new(app);
+    gtk_window_set_title(GTK_WINDOW(loginWin), "Login");
+    gtk_window_set_default_size(GTK_WINDOW(loginWin), LOGIN_WIN_WIDTH, LOGIN_WIN_HEIGHT);
+
+    inputLabels[0] = gtk_label_new("IP : ");
+    inputEntries[0] = gtk_entry_new();
+    gtk_entry_set_placeholder_text(GTK_ENTRY(inputEntries[0]), "127.0.0.1");
+
+    inputLabels[1] = gtk_label_new("Port : ");
+    inputEntries[1] = gtk_entry_new();
+    gtk_entry_set_placeholder_text(GTK_ENTRY(inputEntries[1]), "7777");
+
+    inputLabels[2] = gtk_label_new("Name : ");
+    inputEntries[2] = gtk_entry_new();
+
+    guint margin = 5;
+    grid = gtk_grid_new();
+
+    gtk_grid_set_row_homogeneous(GTK_GRID(grid), TRUE);
+    gtk_grid_set_column_homogeneous(GTK_GRID(grid), TRUE);
+    gtk_grid_set_row_spacing(GTK_GRID(grid), margin);
+    gtk_grid_set_column_spacing(GTK_GRID(grid), margin);
+
+    gtk_container_add(GTK_CONTAINER(loginWin), grid);
+
+    button = gtk_button_new_with_label("OK");
+    g_signal_connect(button, "clicked", G_CALLBACK(getLoginData), loginWin);
+
+    gtk_grid_attach(GTK_GRID(grid), inputLabels[0], 0, 0, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), inputEntries[0], 1, 0, 2, 1);
+    gtk_grid_attach(GTK_GRID(grid), inputLabels[1], 0, 1, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), inputEntries[1], 1, 1, 2, 1);
+    gtk_grid_attach(GTK_GRID(grid), inputLabels[2], 0, 2, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), inputEntries[2], 1, 2, 2, 1);
+    gtk_grid_attach(GTK_GRID(grid), button, 0, 3, 3, 1);
+
+    gtk_widget_show_all(loginWin);
 }

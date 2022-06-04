@@ -17,7 +17,7 @@ server:
 
 client:
 	mkdir -p $(BUILD_DIR)
-	$(CC) $(SRC_DIRS)/$(CLIENT_APP).c -o $(BUILD_DIR)/$(CLIENT_APP).out $(CFLAGS)
+	$(CC) $(CFLAGS) -o $(BUILD_DIR)/$(CLIENT_APP).out $(SRC_DIRS)/$(CLIENT_APP).c $(LFLAGS)
 
 clean:
 	rm -r $(BUILD_DIR)
