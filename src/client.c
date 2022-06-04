@@ -25,22 +25,24 @@
 #define NAME_SIZE 20
 #define MAX_ROOM 10
 
-static void manageWindow(GtkApplication *, gpointer);
 static void loginWindow(GtkApplication *, gpointer);
-static void listWindow(GtkApplication *, gpointer);
+static void mainWindow(GtkApplication *, gpointer);
 gint deleteEvent(GtkWidget *, GdkEvent *, gpointer);
 void *connectServer(void *);
 void getRoomList(void);
+void logger(char *);
+void sendText(void);
 
 GtkApplication *app;
 GtkWidget *loginWin;
 GtkWidget *logText;
-GtkTextBuffer *textBuffer;
+GtkTextBuffer *logTextBuffer;
+GtkWidget *inputText;
 GtkWidget *inputEntries[3];
 
 char name[NAME_SIZE] = "[DEFAULT]";
 char msg[BUF_SIZE];
-char *serverIP = "127.0.0.1", *clientName = "test";
+char *serverIP = "127.0.0.1", *clientName = "[test]";
 int portNum = 7777, rooms = -1;
 
 typedef struct _Room {
@@ -57,7 +59,7 @@ int main(int argc, char **argv) {
     app = gtk_application_new("yu.client.simplechat", G_APPLICATION_FLAGS_NONE);
 
     // g_signal_connect(app, "activate", G_CALLBACK(loginWindow), NULL);
-    g_signal_connect(app, "activate", G_CALLBACK(listWindow), NULL);
+    g_signal_connect(app, "activate", G_CALLBACK(mainWindow), NULL);
     g_application_run(G_APPLICATION(app), argc, argv);
     g_object_unref(app);
 
@@ -80,7 +82,7 @@ static void getLoginData(GtkApplication *_app, gpointer user_data) {
     // clientName = gtk_entry_buffer_get_text(entryBuffer);
     g_print("name : %s\n", clientName);
 
-    listWindow(app, NULL);
+    mainWindow(app, NULL);
 }
 
 void *connectServer(void *args) {
@@ -91,10 +93,22 @@ void *connectServer(void *args) {
     servAddr.sin_addr.s_addr = inet_addr(serverIP);
     servAddr.sin_port = htons(portNum);
 
+    logger("[INFO] Connecting to the server...\n");
+
     if (connect(clientSocket, (struct sockaddr *)&servAddr, sizeof(servAddr)) == -1) {
         g_print("connection error");
         exit(1);
     }
+
+    logger("[INFO] Connected!\n");
+}
+
+void logger(char *msg) {
+    GtkTextIter end;
+    logTextBuffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(logText));
+    gtk_text_buffer_get_end_iter(logTextBuffer, &end);
+
+    gtk_text_buffer_insert(logTextBuffer, &end, msg, -1);
 }
 
 gboolean closeRequest(GtkWindow *window, gpointer user_data) {
@@ -104,20 +118,47 @@ gboolean closeRequest(GtkWindow *window, gpointer user_data) {
     return FALSE;
 }
 
-static void listWindow(GtkApplication *app, gpointer user_data) {
-    // gtk_window_close((GtkWindow*)loginWin);
+void sendText(void) {
+    GtkEntryBuffer *entryBuffer = gtk_entry_get_buffer((GtkEntry *)inputText);
+    const char *msg = gtk_entry_buffer_get_text(entryBuffer);
+    char buffer[NAME_SIZE + BUF_SIZE];
+    sprintf(buffer, "%s %s", clientName, msg);
+    write(clientSocket, buffer, NAME_SIZE + BUF_SIZE);
 
+    gtk_entry_set_text((GtkEntry *)inputText, "");
+}
+
+static void mainWindow( GtkApplication *app, gpointer user_data) {
+    // gtk_window_close((GtkWindow*)loginWin);
     GtkWidget *window;
-    GtkWidget *shutdownButton;
-    GtkWidget *createRoomButton;
+    GtkWidget *button;
     GtkWidget *grid;
 
     window = gtk_application_window_new(app);
     gtk_window_set_title(GTK_WINDOW(window), "SimpleChat Client");
     gtk_window_set_default_size(GTK_WINDOW(window), MAIN_WIDTH, MAIN_HEIGHT);
 
-    g_signal_connect(window, "delete-event", G_CALLBACK(closeRequest), NULL);
+    logText = gtk_text_view_new();
+    logTextBuffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(logText));
 
+    inputText = gtk_entry_new();
+
+    guint margin = 2;
+    grid = gtk_grid_new();
+
+    gtk_grid_set_row_homogeneous(GTK_GRID(grid), TRUE);
+    gtk_grid_set_column_homogeneous(GTK_GRID(grid), TRUE);
+    gtk_grid_set_row_spacing(GTK_GRID(grid), margin);
+    gtk_grid_set_column_spacing(GTK_GRID(grid), margin);
+
+    button = gtk_button_new_with_label("OK");
+    g_signal_connect(button, "clicked", G_CALLBACK(sendText), NULL);
+    
+    gtk_container_add(GTK_CONTAINER(window), grid);
+
+    gtk_grid_attach(GTK_GRID(grid), logText, 0, 0, 5, 5);
+    gtk_grid_attach(GTK_GRID(grid), inputText, 0, 5, 4, 1);
+    gtk_grid_attach(GTK_GRID(grid), button, 5, 4, 1, 1);
     gtk_widget_show_all(window);
 
     pthread_create(&connectThread, NULL, connectServer, NULL);

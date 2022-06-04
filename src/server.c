@@ -245,17 +245,21 @@ static void manageWindow(GtkApplication *app, gpointer user_data) {
 
 void *handleClient(void *arg) {
     int clientSocket = *((int *)arg);
-    int length = 0, i;
+    int length = 0;
     char msg[BUF_SIZE];
 
-
     while ((length = read(clientSocket, msg, sizeof(msg))) != 0) {
-        // sendMsg(msg, length);
-        g_print(msg);
+        msg[strlen(msg)] = '\n';
+        msg[strlen(msg)] = '\0';
+        GtkTextIter end;
+        textBuffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(logText));
+        gtk_text_buffer_get_end_iter(textBuffer, &end);
+
+        gtk_text_buffer_insert(textBuffer, &end, msg, -1);
     }
 
     pthread_mutex_lock(&clientMutex);
-    for (i = 0; i < clientCount; i++) {
+    for (int i = 0; i < clientCount; i++) {
         if (clientSocket == clientSockets[i]) {
             while (i < clientCount - 1) {
                 clientSockets[i] = clientSockets[i + 1];
