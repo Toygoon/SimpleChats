@@ -56,7 +56,6 @@ Room roomInfo[MAX_ROOM];
 int main(int argc, char **argv) {
     app = gtk_application_new("yu.client.simplechat", G_APPLICATION_FLAGS_NONE);
 
-
     // g_signal_connect(app, "activate", G_CALLBACK(loginWindow), NULL);
     g_signal_connect(app, "activate", G_CALLBACK(listWindow), NULL);
     g_application_run(G_APPLICATION(app), argc, argv);
@@ -95,19 +94,6 @@ void *connectServer(void *args) {
     if (connect(clientSocket, (struct sockaddr *)&servAddr, sizeof(servAddr)) == -1) {
         g_print("connection error");
         exit(1);
-    }
-
-    getRoomList();
-}
-
-void getRoomList(void) {
-    char tmp[BUF_SIZE];
-    for (int i = 0; i < MAX_ROOM; i++) {
-        recv(clientSocket, tmp, sizeof(Room), 0);
-        Room* room = (Room*)tmp;
-        roomInfo[i].roomId = room->roomId;
-        strncpy(roomInfo[i].roomName, room->roomName, 50);
-        g_print("%s\n", roomInfo[i].roomName);
     }
 }
 

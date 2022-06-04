@@ -248,9 +248,6 @@ void *handleClient(void *arg) {
     int length = 0, i;
     char msg[BUF_SIZE];
 
-    for (int i = 0; i < MAX_ROOM; i++) {
-        send(clientSocket, (char *)&roomInfo[i], sizeof(Room), 0);
-    }
 
     while ((length = read(clientSocket, msg, sizeof(msg))) != 0) {
         // sendMsg(msg, length);
