@@ -53,8 +53,8 @@ GtkWidget *portInputEntry;
 int main(int argc, char **argv) {
     app = gtk_application_new("com.toygoon.simplechat", G_APPLICATION_FLAGS_NONE);
 
-    g_signal_connect(app, "activate", G_CALLBACK(portWindow), NULL);
-    //g_signal_connect(app, "activate", G_CALLBACK(manageWindow), NULL);
+    //g_signal_connect(app, "activate", G_CALLBACK(portWindow), NULL);
+    g_signal_connect(app, "activate", G_CALLBACK(manageWindow), NULL);
     g_application_run(G_APPLICATION(app), argc, argv);
     g_object_unref(app);
 
@@ -78,7 +78,12 @@ void *startServer(void *arg) {
     servAddr.sin_family = AF_INET;
     servAddr.sin_addr.s_addr = htonl(INADDR_ANY);
 
-    logger("[INFO] Setting a port number.\n");
+    char tmp[BUF_SIZE] = "[INFO] Setting a port number to ";
+    /*
+    strcat(tmp, gtk_entry_buffer_get_text(gtk_entry_get_buffer((GtkEntry*)portInputEntry)));
+    strcat(tmp, "\n");
+    logger(tmp);
+    */
     servAddr.sin_port = htons(portNum);
 
     if (bind(serverSocket, (struct sockaddr *)&servAddr, sizeof(servAddr)) == -1) {
@@ -161,9 +166,9 @@ void logger(char* msg) {
 }
 
 static void manageWindow(GtkApplication *app, gpointer user_data) {
-    gtk_window_close((GtkWindow*)portWin);
+    // gtk_window_close((GtkWindow*)portWin);
     GtkWidget *window;
-    GtkWidget *button;
+    GtkWidget *shutdownButton;
     GtkWidget *grid;
 
     window = gtk_application_window_new(app);
@@ -185,12 +190,11 @@ static void manageWindow(GtkApplication *app, gpointer user_data) {
 
     gtk_container_add(GTK_CONTAINER(window), grid);
 
-    button = gtk_button_new_with_label("a");
-    gtk_widget_set_size_request(button, 10, 10);
-    g_signal_connect_swapped(button, "clicked", G_CALLBACK(closeRequest), window);
+    shutdownButton = gtk_button_new_with_label("Shutdown");
+    g_signal_connect(shutdownButton, "clicked", G_CALLBACK(closeRequest), window);
 
     gtk_grid_attach(GTK_GRID(grid), logText, 0, 0, 5, 5);
-    gtk_grid_attach(GTK_GRID(grid), button, 0, 5, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), shutdownButton, 4, 5, 1, 1);
 
     gtk_widget_show_all(window);
 
