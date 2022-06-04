@@ -6,9 +6,4 @@
 #define MAX_ROOM 10
 #define NAME_SIZE 20
 
-typedef struct _Room {
-    int roomId;
-    char roomName[BUF_SIZE];
-} Room;
-
 #endif
