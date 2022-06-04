@@ -8,6 +8,7 @@
 #include <gtk/gtk.h>
 #include <netinet/in.h>
 #include <pthread.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -32,6 +33,7 @@ void *connectServer(void *);
 void getRoomList(void);
 void logger(char *);
 void sendText(void);
+void *receiveData(void *);
 
 GtkApplication *app;
 GtkWidget *loginWin;
@@ -52,7 +54,7 @@ typedef struct _Room {
 
 int clientSocket;
 struct sockaddr_in servAddr;
-pthread_t connectThread, snd_thread, rcv_thread;
+pthread_t connectThread, snd_thread, receiveThread;
 Room roomInfo[MAX_ROOM];
 
 int main(int argc, char **argv) {
@@ -85,7 +87,29 @@ static void getLoginData(GtkApplication *_app, gpointer user_data) {
     mainWindow(app, NULL);
 }
 
+void *receiveData(void *args) {
+    char buffer[NAME_SIZE + BUF_SIZE];
+    int res;
+
+    while (1) {
+        res = read(clientSocket, buffer, NAME_SIZE + BUF_SIZE - 1);
+        if (res == -1)
+            return (void *)-1;
+
+        buffer[res++] = '\0';
+        buffer[res] = '\n';
+
+        GtkTextIter end;
+        logTextBuffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(logText));
+        gtk_text_buffer_get_end_iter(logTextBuffer, &end);
+        gtk_text_buffer_insert(logTextBuffer, &end, buffer, -1);
+    }
+
+    return NULL;
+}
+
 void *connectServer(void *args) {
+    void *threadReturn;
     clientSocket = socket(PF_INET, SOCK_STREAM, 0);
 
     memset(&servAddr, 0, sizeof(servAddr));
@@ -128,11 +152,12 @@ void sendText(void) {
     gtk_entry_set_text((GtkEntry *)inputText, "");
 }
 
-static void mainWindow( GtkApplication *app, gpointer user_data) {
+static void mainWindow(GtkApplication *app, gpointer user_data) {
     // gtk_window_close((GtkWindow*)loginWin);
     GtkWidget *window;
     GtkWidget *button;
     GtkWidget *grid;
+    void *threadReturn;
 
     window = gtk_application_window_new(app);
     gtk_window_set_title(GTK_WINDOW(window), "SimpleChat Client");
@@ -153,7 +178,7 @@ static void mainWindow( GtkApplication *app, gpointer user_data) {
 
     button = gtk_button_new_with_label("OK");
     g_signal_connect(button, "clicked", G_CALLBACK(sendText), NULL);
-    
+
     gtk_container_add(GTK_CONTAINER(window), grid);
 
     gtk_grid_attach(GTK_GRID(grid), logText, 0, 0, 5, 5);
@@ -162,6 +187,10 @@ static void mainWindow( GtkApplication *app, gpointer user_data) {
     gtk_widget_show_all(window);
 
     pthread_create(&connectThread, NULL, connectServer, NULL);
+    pthread_join(connectThread, &threadReturn);
+
+    pthread_create(&receiveThread, NULL, receiveData, NULL);
+    pthread_detach(receiveThread);
 }
 
 static void loginWindow(GtkApplication *app, gpointer user_data) {

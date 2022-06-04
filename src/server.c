@@ -251,10 +251,11 @@ void *handleClient(void *arg) {
     while ((length = read(clientSocket, msg, sizeof(msg))) != 0) {
         msg[strlen(msg)] = '\n';
         msg[strlen(msg)] = '\0';
+
+        sendMsg(msg, strlen(msg));
         GtkTextIter end;
         textBuffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(logText));
         gtk_text_buffer_get_end_iter(textBuffer, &end);
-
         gtk_text_buffer_insert(textBuffer, &end, msg, -1);
     }
 
@@ -276,9 +277,9 @@ void *handleClient(void *arg) {
 }
 
 void sendMsg(char *msg, int len) {
-    int i;
+    g_print("writing %s", msg);
     pthread_mutex_lock(&clientMutex);
-    for (i = 0; i < clientCount; i++)
+    for (int i = 0; i < clientCount; i++)
         write(clientSockets[i], msg, len);
     pthread_mutex_unlock(&clientMutex);
 }
