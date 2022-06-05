@@ -132,6 +132,13 @@ void logger(char *msg) {
 }
 
 gboolean closeRequest(GtkWindow *window, gpointer user_data) {
+    char buffer[BUF_SIZE];
+    memset(buffer, 0, sizeof(buffer));
+    strcpy(buffer, "(EXIT)");
+    strncat(buffer, clientName, strlen(clientName));
+
+    write(clientSocket, buffer, strlen(buffer));
+
     close(clientSocket);
     gtk_window_close(window);
 
@@ -161,6 +168,7 @@ static void mainWindow(GtkApplication *app, gpointer user_data) {
     window = gtk_application_window_new(app);
     gtk_window_set_title(GTK_WINDOW(window), "SimpleChat Client");
     gtk_window_set_default_size(GTK_WINDOW(window), MAIN_WIDTH, MAIN_HEIGHT);
+    g_signal_connect(window, "delete-event", G_CALLBACK(closeRequest), NULL);
 
     logText = gtk_text_view_new();
     logTextBuffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(logText));

@@ -50,7 +50,7 @@ GtkWidget *logText;
 GtkTextBuffer *textBuffer;
 GtkWidget *portInputEntry;
 
-MemberInfo mem[MAX_CLIENT];
+MemberInfo memberInfo[MAX_CLIENT];
 
 int main(int argc, char **argv) {
     app = gtk_application_new("yu.server.simplechat", G_APPLICATION_FLAGS_NONE);
@@ -232,7 +232,7 @@ void *handleClient(void *arg) {
         if (msg[0] == '(') {
             msg[length] = '\0';
 
-            char name[NAME_SIZE];
+            char name[NAME_SIZE], buffer[BUF_SIZE];
             for (int i = 1; msg[i] != ')'; i++)
                 prefix[tmp++] = msg[i];
 
@@ -240,7 +240,21 @@ void *handleClient(void *arg) {
             for (int i = strlen(prefix) + 2; i < length; i++)
                 name[tmp++] = msg[i];
 
-                
+
+            memset(buffer, 0, sizeof(buffer));
+            if (strcmp(prefix, "NEW") == 0) {
+                MemberInfo current;
+                current.socket = clientSocket;
+                strncpy(current.name, name, strlen(name));
+                memberInfo[clientCount - 1] = current;
+
+                strcpy(buffer, "[INFO] New member ");
+                strncat(buffer, name, strlen(name));
+                strcat(buffer, "has connected!\n");
+                g_print(buffer);
+            } else if (strcmp(prefix, "EXIT") == 0) {
+                g_print("EXIT");
+            }
 
         } else {
             msg[length++] = '\n';
