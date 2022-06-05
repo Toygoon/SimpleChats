@@ -15,15 +15,13 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include "common.h"
+
 #define MAIN_WIDTH 600
 #define MAIN_HEIGHT 600
 
 #define PORT_WIN_WIDTH 200
 #define PORT_WIN_HEIGHT 100
-
-#define BUF_SIZE 100
-#define MAX_CLIENT 256
-#define MAX_ROOM 10
 
 static void manageWindow(GtkApplication *, gpointer);
 static void portWindow(GtkApplication *, gpointer);
@@ -34,12 +32,11 @@ void sendMsg(char *, int);
 void handleError(char *);
 void *startServer(void *);
 void logger(char *);
-void *createNewRoom(void *);
-void createRoomButtonPressed(void);
+void *showMembers(void *);
 
 int clientCount = 0, totalRooms = 0;
 int clientSockets[MAX_CLIENT];
-pthread_mutex_t clientMutex, roomMutex;
+pthread_mutex_t clientMutex, memberMutex;
 
 char buf[BUF_SIZE], **roomNames;
 int serverSocket, clientSocket;
@@ -52,6 +49,8 @@ GtkWidget *portWin;
 GtkWidget *logText;
 GtkTextBuffer *textBuffer;
 GtkWidget *portInputEntry;
+
+MemberInfo mem[MAX_CLIENT];
 
 int main(int argc, char **argv) {
     app = gtk_application_new("yu.server.simplechat", G_APPLICATION_FLAGS_NONE);
@@ -170,24 +169,12 @@ void logger(char *msg) {
     gtk_text_buffer_insert(textBuffer, &end, msg, -1);
 }
 
-void *createNewRoom(void *arg) {
+void *showMembers(void *arg) {
     /*
     pthread_mutex_lock(&roomMutex);
     clientSockets[clientCount++] = clientSocket;
     pthread_mutex_unlock(&roomMutex);
     */
-    int roomId = *((int *)arg);
-}
-
-void createRoomButtonPressed(void) {
-    /*
-    pthread_create(chatRooms[totalRooms], NULL, createNewRoom, totalRooms);
-    pthread_detach(chatRooms[totalRooms++]);
-    */
-
-    // rooms[totalRooms++] = room;
-    totalRooms++;
-    g_print("%d\n", totalRooms);
 }
 
 static void manageWindow(GtkApplication *app, gpointer user_data) {
@@ -219,8 +206,8 @@ static void manageWindow(GtkApplication *app, gpointer user_data) {
     shutdownButton = gtk_button_new_with_label("Shutdown");
     g_signal_connect(shutdownButton, "clicked", G_CALLBACK(closeRequest), window);
 
-    createRoomButton = gtk_button_new_with_label("Create \nnew room");
-    g_signal_connect(createRoomButton, "clicked", G_CALLBACK(createRoomButtonPressed), window);
+    createRoomButton = gtk_button_new_with_label("Show\nMembers");
+    g_signal_connect(createRoomButton, "clicked", G_CALLBACK(showMembers), window);
 
     gtk_grid_attach(GTK_GRID(grid), logText, 0, 0, 5, 5);
     gtk_grid_attach(GTK_GRID(grid), createRoomButton, 0, 5, 1, 1);
@@ -233,19 +220,39 @@ static void manageWindow(GtkApplication *app, gpointer user_data) {
 }
 
 void *handleClient(void *arg) {
+    pthread_mutex_init(&memberMutex, NULL);
     int clientSocket = *((int *)arg);
     int length = 0;
     char msg[BUF_SIZE];
 
     while ((length = read(clientSocket, msg, sizeof(msg))) != 0) {
-        msg[strlen(msg)] = '\n';
-        msg[strlen(msg)] = '\0';
+        char prefix[NAME_SIZE];
+        int tmp = 0;
 
-        sendMsg(msg, strlen(msg));
-        GtkTextIter end;
-        textBuffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(logText));
-        gtk_text_buffer_get_end_iter(textBuffer, &end);
-        gtk_text_buffer_insert(textBuffer, &end, msg, -1);
+        if (msg[0] == '(') {
+            msg[length] = '\0';
+
+            char name[NAME_SIZE];
+            for (int i = 1; msg[i] != ')'; i++)
+                prefix[tmp++] = msg[i];
+
+            tmp = 0;
+            for (int i = strlen(prefix) + 2; i < length; i++)
+                name[tmp++] = msg[i];
+
+                
+
+        } else {
+            msg[length++] = '\n';
+            msg[length] = '\0';
+            GtkTextIter end;
+
+            sendMsg(msg, length);
+
+            textBuffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(logText));
+            gtk_text_buffer_get_end_iter(textBuffer, &end);
+            gtk_text_buffer_insert(textBuffer, &end, (const gchar *)msg, -1);
+        }
     }
 
     pthread_mutex_lock(&clientMutex);
@@ -266,7 +273,6 @@ void *handleClient(void *arg) {
 }
 
 void sendMsg(char *msg, int len) {
-    g_print("writing %s", msg);
     pthread_mutex_lock(&clientMutex);
     for (int i = 0; i < clientCount; i++)
         write(clientSockets[i], msg, len);

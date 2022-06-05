@@ -15,16 +15,13 @@
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include "common.h"
 
 #define MAIN_WIDTH 600
 #define MAIN_HEIGHT 600
 
 #define LOGIN_WIN_WIDTH 200
 #define LOGIN_WIN_HEIGHT 100
-
-#define BUF_SIZE 100
-#define NAME_SIZE 20
-#define MAX_ROOM 10
 
 static void loginWindow(GtkApplication *, gpointer);
 static void mainWindow(GtkApplication *, gpointer);
@@ -44,7 +41,7 @@ GtkWidget *inputEntries[3];
 
 char name[NAME_SIZE] = "[DEFAULT]";
 char msg[BUF_SIZE];
-char *serverIP = "127.0.0.1", *clientName = "[test]";
+char *serverIP = "127.0.0.1", *clientName = "test";
 int portNum = 7777, rooms = -1;
 
 int clientSocket;
@@ -89,14 +86,13 @@ void *receiveData(void *args) {
         res = read(clientSocket, buffer, NAME_SIZE + BUF_SIZE - 1);
         if (res == -1)
             return (void *)-1;
-
-        buffer[res++] = '\0';
-        buffer[res] = '\n';
+        
+        buffer[res] = '\0';
 
         GtkTextIter end;
         logTextBuffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(logText));
         gtk_text_buffer_get_end_iter(logTextBuffer, &end);
-        gtk_text_buffer_insert(logTextBuffer, &end, buffer, -1);
+        gtk_text_buffer_insert(logTextBuffer, &end, (const gchar*)buffer, -1);
     }
 
     return NULL;
@@ -117,6 +113,12 @@ void *connectServer(void *args) {
         g_print("connection error");
         exit(1);
     }
+
+    char buffer[BUF_SIZE];
+    memset(buffer, 0, sizeof(buffer));
+    strcpy(buffer, "(NEW)");
+    strncat(buffer, clientName, strlen(clientName));
+    write(clientSocket, buffer, strlen(buffer));
 
     logger("[INFO] Connected!\n");
 }
@@ -139,10 +141,13 @@ gboolean closeRequest(GtkWindow *window, gpointer user_data) {
 void sendText(void) {
     GtkEntryBuffer *entryBuffer = gtk_entry_get_buffer((GtkEntry *)inputText);
     const char *msg = gtk_entry_buffer_get_text(entryBuffer);
-    char buffer[NAME_SIZE + BUF_SIZE];
-    sprintf(buffer, "%s %s", clientName, msg);
-    write(clientSocket, buffer, NAME_SIZE + BUF_SIZE);
 
+    char buffer[NAME_SIZE + BUF_SIZE];
+    memset(buffer, 0, sizeof(buffer));
+    strncpy(buffer, clientName, strlen(clientName));
+    strncat(buffer, msg, strlen(msg));
+
+    write(clientSocket, buffer, strlen(buffer));
     gtk_entry_set_text((GtkEntry *)inputText, "");
 }
 
@@ -177,7 +182,7 @@ static void mainWindow(GtkApplication *app, gpointer user_data) {
 
     gtk_grid_attach(GTK_GRID(grid), logText, 0, 0, 5, 5);
     gtk_grid_attach(GTK_GRID(grid), inputText, 0, 5, 4, 1);
-    gtk_grid_attach(GTK_GRID(grid), button, 5, 4, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), button, 4, 5, 1, 1);
     gtk_widget_show_all(window);
 
     pthread_create(&connectThread, NULL, connectServer, NULL);

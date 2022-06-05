@@ -6,4 +6,9 @@
 #define MAX_ROOM 10
 #define NAME_SIZE 20
 
+typedef struct _MemberInfo {
+    int socket;
+    char name[NAME_SIZE];
+} MemberInfo;
+
 #endif
