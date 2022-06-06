@@ -69,7 +69,7 @@ int main(int argc, char **argv) {
 
     return 0;
 }
-
+-
 gboolean closeRequest(GtkWindow *window, gpointer user_data) {
     close(serverSocket);
     gtk_window_close(window);
