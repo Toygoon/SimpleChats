@@ -42,7 +42,7 @@ GtkWidget *inputEntries[3];
 char name[NAME_SIZE] = "[DEFAULT]";
 char msg[BUF_SIZE];
 char *serverIP = "127.0.0.1", *clientName = "test";
-int portNum = 7777, rooms = -1;
+int portNum = 7778, rooms = -1;
 
 int clientSocket;
 struct sockaddr_in servAddr;

@@ -14,6 +14,7 @@
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <stdbool.h>
 
 #include "common.h"
 
@@ -41,7 +42,7 @@ pthread_mutex_t clientMutex, memberMutex;
 char buf[BUF_SIZE], **roomNames;
 int serverSocket, clientSocket;
 struct sockaddr_in servAddr, clientAddr;
-int clientAddrSz, portNum = 7777;
+int clientAddrSz, portNum = 7778;
 pthread_t threadId, serverThread, chatRooms[MAX_ROOM];
 
 GtkApplication *app;
@@ -55,6 +56,11 @@ MemberInfo memberInfo[MAX_CLIENT];
 int main(int argc, char **argv) {
     app = gtk_application_new("yu.server.simplechat", G_APPLICATION_FLAGS_NONE);
     roomNames = (char **)calloc(MAX_ROOM, sizeof(char *));
+
+    for(int i=0; i<MAX_CLIENT; i++) {
+        memberInfo[i].socket = -1;
+        memberInfo[i].disabled = true;
+    }
 
     // g_signal_connect(app, "activate", G_CALLBACK(portWindow), NULL);
     g_signal_connect(app, "activate", G_CALLBACK(manageWindow), NULL);
@@ -174,7 +180,12 @@ void *showMembers(void *arg) {
     memset(tmp, 0, sizeof(tmp));
     strcpy(tmp, "[INFO] Current members : ");
 
-    for (int i = 0; i < clientCount; i++) {
+    for (int i = 0; i < MAX_CLIENT; i++) {
+        if (memberInfo[i].disabled)
+            continue;
+        
+        if (memberInfo[i].socket == -1)
+            break;
         strcat(tmp, memberInfo[i].name);
 
         if (i != clientCount - 1)
@@ -182,11 +193,7 @@ void *showMembers(void *arg) {
     }
 
     strcat(tmp, "\n");
-    GtkTextIter end;
-    
-    textBuffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(logText));
-    gtk_text_buffer_get_end_iter(textBuffer, &end);
-    gtk_text_buffer_insert(textBuffer, &end, (const gchar *)tmp, -1);
+    g_print("%s\n", tmp);
 }
 
 static void manageWindow(GtkApplication *app, gpointer user_data) {
@@ -254,6 +261,7 @@ void *handleClient(void *arg) {
             MemberInfo newMem;
             newMem.socket = clientSocket;
             strcpy(newMem.name, name);
+            newMem.disabled = false;
             memberInfo[clientCount - 1] = newMem;
 
             strcpy(buffer, "[INFO] New member ");
@@ -271,9 +279,6 @@ void *handleClient(void *arg) {
         textBuffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(logText));
         gtk_text_buffer_get_end_iter(textBuffer, &end);
         gtk_text_buffer_insert(textBuffer, &end, (const gchar *)buffer, -1);
-
-        if (strcmp(prefix, "exit") == 0)
-            break;
     }
 
     pthread_mutex_lock(&clientMutex);
@@ -287,18 +292,6 @@ void *handleClient(void *arg) {
             break;
         }
     }
-    pthread_mutex_lock(&memberMutex);
-    for (int i = 0; i < clientCount; i++) {
-        if (clientSocket = memberInfo[i].socket) {
-            while (i < clientCount - 1) {
-                memberInfo[i] = memberInfo[i + 1];
-                i++;
-            }
-
-            break;
-        }
-    }
-    pthread_mutex_unlock(&memberMutex);
     clientCount--;
     pthread_mutex_unlock(&clientMutex);
     close(clientSocket);

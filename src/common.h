@@ -6,9 +6,12 @@
 #define MAX_ROOM 10
 #define NAME_SIZE 20
 
+#include <stdbool.h>
+
 typedef struct _MemberInfo {
     int socket;
     char name[NAME_SIZE];
+    bool disabled;
 } MemberInfo;
 
 #endif
