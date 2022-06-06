@@ -174,7 +174,7 @@ void removeMember(int socket) {
     while (ptr != NULL) {
         if (ptr->socket == socket)
             break;
-        
+
         prev = ptr;
         ptr = ptr->next;
     }
@@ -185,6 +185,21 @@ void removeMember(int socket) {
         prev->next = ptr->next;
 
     free(ptr);
+}
+
+int findSocketByName(char *name) {
+    int res = -1;
+
+    for (MemberInfo *ptr = memberLinkedList; ptr != NULL; ptr = ptr->next)
+        if (strcmp(name, ptr->name) == 0) {
+            res = ptr->socket;
+
+            break;
+        }
+
+    g_print("found socket %d\n", res);
+
+    return res;
 }
 
 static void manageWindow(GtkApplication *app, gpointer user_data) {
@@ -268,6 +283,32 @@ void *handleClient(void *arg) {
             logger(buf);
         } else if (strcmp(prefix, "exit") == 0) {
             break;
+        } else if (strcmp(prefix, "private") == 0) {
+            int destSocket;
+            char dest[NAME_SIZE];
+
+            tmp = 0;
+            for (i = 0; data[tmp] != ','; i++)
+                dest[i] = data[tmp++];
+            dest[i] = '\0';
+
+            tmp++;
+            for (i = 0; data[tmp] != '\0'; i++)
+                buf[i] = data[tmp++];
+
+            buf[i] = '\0';
+            destSocket = findSocketByName(dest);
+
+            // Todo : find name
+            if (destSocket == -1) {
+                logger("[INFO] No member named ");
+                logger(dest);
+                logger("\n");
+            } else {
+                g_print("send private message %s to %s : %s\n", name, dest, buf);
+                write(destSocket, buf, strlen(buf));
+            }
+
         } else if (strcmp(prefix, "global") == 0) {
             buf[0] = '[';
             strcat(buf, name);

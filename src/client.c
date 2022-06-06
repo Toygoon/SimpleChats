@@ -114,8 +114,13 @@ void sendText(void) {
     GtkEntryBuffer *entryBuffer = gtk_entry_get_buffer((GtkEntry *)inputText);
     const char *msg = gtk_entry_buffer_get_text(entryBuffer);
 
-    char *data = createMsg("global", clientName, msg);
-    write(clientSocket, data, strlen(data));
+    if (msg[0] == '@') {
+        char *data = createMsg("private", clientName, msg);
+        write(clientSocket, data, strlen(data));
+    } else {
+        char *data = createMsg("global", clientName, msg);
+        write(clientSocket, data, strlen(data));
+    }
     gtk_entry_set_text((GtkEntry *)inputText, "");
 }
 

@@ -30,6 +30,7 @@ void *handleClient(void *);
 void showMembers(void);
 void newMember(int, char *);
 void removeMember(int);
+int findSocketByName(char *);
 
 int clientCount = 0, clientSockets[MAX_CLIENT], clientAddrSz, portNum = 7778;
 pthread_mutex_t clientMutex, memberMutex;
