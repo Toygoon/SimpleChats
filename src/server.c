@@ -4,60 +4,11 @@
  * Department of Computer Engineering, Yeungnam University.
  */
 
-#include <arpa/inet.h>
-#include <gtk/gtk.h>
-#include <netinet/in.h>
-#include <pthread.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/ioctl.h>
-#include <sys/socket.h>
-#include <unistd.h>
-
-#include "common.h"
-
-#define MAIN_WIDTH 600
-#define MAIN_HEIGHT 600
-
-#define PORT_WIN_WIDTH 200
-#define PORT_WIN_HEIGHT 100
-
-static void manageWindow(GtkApplication *, gpointer);
-static void portWindow(GtkApplication *, gpointer);
-gint deleteEvent(GtkWidget *, GdkEvent *, gpointer);
-static void getPortText(GtkApplication *, gpointer);
-void *handleClient(void *);
-void sendMsg(char *, int);
-void handleError(char *);
-void *startServer(void *);
-void logger(char *);
-void *showMembers(void *);
-void newMember(int, char *);
-
-int clientCount = 0, totalRooms = 0;
-int clientSockets[MAX_CLIENT];
-pthread_mutex_t clientMutex, memberMutex;
-
-char buf[BUF_SIZE], **roomNames;
-int serverSocket;
-struct sockaddr_in servAddr, clientAddr;
-int clientAddrSz, portNum = 7778;
-pthread_t clientsThread[MAX_CLIENT], serverThread;
-
-GtkApplication *app;
-GtkWidget *portWin;
-GtkWidget *logText;
-GtkTextBuffer *textBuffer;
-GtkWidget *portInputEntry;
-
-struct MemberInfo *memberLinkedList;
+#include "server.h"
 
 int main(int argc, char **argv) {
     app = gtk_application_new("yu.server.simplechat", G_APPLICATION_FLAGS_NONE);
 
-    memberLinkedList = NULL;
     // g_signal_connect(app, "activate", G_CALLBACK(portWindow), NULL);
     g_signal_connect(app, "activate", G_CALLBACK(manageWindow), NULL);
     g_application_run(G_APPLICATION(app), argc, argv);
@@ -70,7 +21,7 @@ gboolean closeRequest(GtkWindow *window, gpointer user_data) {
     close(serverSocket);
     gtk_window_close(window);
 
-    return FALSE;
+    return false;
 }
 
 void *startServer(void *arg) {
@@ -93,12 +44,12 @@ void *startServer(void *arg) {
 
     if (bind(serverSocket, (struct sockaddr *)&servAddr, sizeof(servAddr)) == -1) {
         logger("[ERROR] bind error, choose another port.\n");
-        return FALSE;
+        return false;
     }
 
     if (listen(serverSocket, 5) == -1) {
         logger("[ERROR] listen error, please free up your memory.\n");
-        return FALSE;
+        return false;
     }
 
     logger("[INFO] Server has started.\n");
@@ -176,37 +127,28 @@ void logger(char *msg) {
 }
 
 void *showMembers(void *arg) {
-    static char tmp[BUF_SIZE];
-    memset(tmp, 0, sizeof(tmp));
-    strcpy(tmp, "[INFO] Current members : ");
-
-    //MemberInfo *ptr = memberLinkedList;
-
+    logger("[INFO] Current members : ");
 
     for (MemberInfo *ptr = memberLinkedList; ptr != NULL; ptr = ptr->next) {
-        g_print("%s ,", ptr->name);
-        strcat(tmp, ptr->name);
+        logger(ptr->name);
 
         if (ptr->next != NULL)
-            strcat(tmp, ", ");
+            logger(", ");
     }
-
-    g_print("\n");
-    strcat(tmp, "\n");
-    logger(tmp);
+    logger("\n");
 }
 
 void newMember(int socket, char* name) {
-    MemberInfo *member = (struct MemberInfo *)malloc(sizeof(MemberInfo));
+    MemberInfo *member = (MemberInfo *)malloc(sizeof(MemberInfo));
     member->socket = socket;
     strcpy(member->name, name);
 
-    if (memberLinkedList == NULL) {
+    if (memberLinkedList == NULL)
         member->next = NULL;
-    } else {
+    else
         member->next = memberLinkedList;
-        memberLinkedList = member;
-    }
+    
+    memberLinkedList = member;
 }
 
 static void manageWindow(GtkApplication *app, gpointer user_data) {
