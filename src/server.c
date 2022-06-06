@@ -8,13 +8,13 @@
 #include <gtk/gtk.h>
 #include <netinet/in.h>
 #include <pthread.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <unistd.h>
-#include <stdbool.h>
 
 #include "common.h"
 
@@ -40,10 +40,10 @@ int clientSockets[MAX_CLIENT];
 pthread_mutex_t clientMutex, memberMutex;
 
 char buf[BUF_SIZE], **roomNames;
-int serverSocket, clientSocket;
+int serverSocket;
 struct sockaddr_in servAddr, clientAddr;
 int clientAddrSz, portNum = 7778;
-pthread_t threadId, serverThread, chatRooms[MAX_ROOM];
+pthread_t clientsThread[MAX_CLIENT], serverThread;
 
 GtkApplication *app;
 GtkWidget *portWin;
@@ -57,7 +57,7 @@ int main(int argc, char **argv) {
     app = gtk_application_new("yu.server.simplechat", G_APPLICATION_FLAGS_NONE);
     roomNames = (char **)calloc(MAX_ROOM, sizeof(char *));
 
-    for(int i=0; i<MAX_CLIENT; i++) {
+    for (int i = 0; i < MAX_CLIENT; i++) {
         memberInfo[i].socket = -1;
         memberInfo[i].disabled = true;
     }
@@ -109,15 +109,19 @@ void *startServer(void *arg) {
 
     while (1) {
         clientAddrSz = sizeof(clientAddr);
-        clientSocket = accept(serverSocket, (struct sockaddr *)&clientAddr, &clientAddrSz);
+        int clientSocket = accept(serverSocket, (struct sockaddr *)&clientAddr, &clientAddrSz);
 
         pthread_mutex_lock(&clientMutex);
-        clientSockets[clientCount++] = clientSocket;
+        clientSockets[clientCount] = clientSocket;
         pthread_mutex_unlock(&clientMutex);
 
-        pthread_create(&threadId, NULL, handleClient, (void *)&clientSocket);
-        pthread_detach(threadId);
+        g_print("new socket : %d\n", clientSocket);
+
+        pthread_create(&clientsThread[clientCount], NULL, handleClient, (void *)&clientSocket);
+        pthread_detach(clientsThread[clientCount]);
+        clientCount++;
         char tmp[BUF_SIZE] = "[CLIENT] Connected client IP: ";
+
         strcat(tmp, inet_ntoa(clientAddr.sin_addr));
         strcat(tmp, "\n");
         logger(tmp);
@@ -183,7 +187,7 @@ void *showMembers(void *arg) {
     for (int i = 0; i < MAX_CLIENT; i++) {
         if (memberInfo[i].disabled)
             continue;
-        
+
         if (memberInfo[i].socket == -1)
             break;
         strcat(tmp, memberInfo[i].name);
@@ -238,96 +242,58 @@ static void manageWindow(GtkApplication *app, gpointer user_data) {
 }
 
 void *handleClient(void *arg) {
-    pthread_mutex_init(&memberMutex, NULL);
-    int clientSocket = *((int *)arg);
+    int socket = *((int *)arg);
     int length = 0;
-    char msg[BUF_SIZE], buffer[BUF_SIZE];
+    char msg[BUF_SIZE];
 
-    while ((length = read(clientSocket, msg, sizeof(msg))) != 0) {
+    while ((length = read(socket, msg, sizeof(msg))) != 0) {
         msg[length] = '\0';
-        g_print("%s\n", msg);
 
         int tmp = 0, i;
         char prefix[NAME_SIZE], name[NAME_SIZE], data[BUF_SIZE];
 
-        for(i=0; msg[tmp] != ','; i++)
+        for (i = 0; msg[tmp] != ','; i++)
             prefix[i] = msg[tmp++];
         prefix[++i] = '\0';
-        g_print("prefix : %s\n", prefix);
-
 
         tmp++;
         for (i = 0; msg[tmp] != ','; i++)
             name[i] = msg[tmp++];
         name[i] = '\0';
-        g_print("name : %s\n", name);
 
         tmp++;
         for (i = 0; msg[tmp] != '\0'; i++)
             data[i] = msg[tmp++];
 
         data[i] = '\0';
-        g_print("data : %s\n", data);
-        /*
-                char prefix[NAME_SIZE], name[NAME_SIZE], data[BUF_SIZE], *ptr;
-                char *arr[3] = {
-                    NULL,
-                };
 
-                int i = 0;
-                while (ptr != NULL) {
-                    arr[i] = ptr;
-                    i++;
+        memset(buf, 0, sizeof(buf));
+        if (strcmp(prefix, "new") == 0) {
+            strcpy(buf, "[INFO] New member ");
+            strcat(buf, name);
+            strcat(buf, " connected!\n");
 
-                    ptr = strtok(NULL, ",");
-                }
+            logger(buf);
+        } else if (strcmp(prefix, "exit") == 0) {
+            strcpy(buf, "[INFO] Member ");
+            strcat(buf, name);
+            strcat(buf, " disconnected.\n");
 
-                for (int i = 0; i<3; i++) {
-                    if (arr[i] != NULL)
-                        g_print("%s\n", arr[i]);
-                }
-        */
-        /*
-                ptr = strtok(msg, ",");
-                strcpy(prefix, ptr);
-                ptr = strtok(NULL, ",");
-                strcpy(name, ptr);
-                ptr = strtok(NULL, ",");
-                strcpy(data, ptr);
-
-                g_print("%s %s %s\n", prefix, name, data);
-
-                if (strcmp(prefix, "new") == 0) {
-                    MemberInfo newMem;
-                    newMem.socket = clientSocket;
-                    strcpy(newMem.name, name);
-                    newMem.disabled = false;
-                    memberInfo[clientCount - 1] = newMem;
-
-                    strcpy(buffer, "[INFO] New member ");
-                    strcat(buffer, name);
-                    strcat(buffer, " has connected!\n");
-                } else if (strcmp(prefix, "exit") == 0) {
-                    strcpy(buffer, "[INFO] Member ");
-                    strcat(buffer, name);
-                    strcat(buffer, " has disconnected.\n");
-                }
-
-                GtkTextIter end;
-                sendMsg(data, strlen(data));
-
-                textBuffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(logText));
-                gtk_text_buffer_get_end_iter(textBuffer, &end);
-                gtk_text_buffer_insert(textBuffer, &end, (const gchar *)buffer, -1);
-
-                if (strcmp(prefix, "exit") == 0)
-                    break;
-                    */
+            logger(buf);
+        } else if (strcmp(prefix, "global") == 0) {
+            buf[0] = '[';
+            strcat(buf, name);
+            strcat(buf, "] ");
+            strcat(buf, data);
+            strcat(buf, "\n");
+            sendMsg(buf, strlen(buf));
+            logger(buf);
+        }
     }
 
     pthread_mutex_lock(&clientMutex);
     for (int i = 0; i < clientCount; i++) {
-        if (clientSocket == clientSockets[i]) {
+        if (socket == clientSockets[i]) {
             while (i < clientCount - 1) {
                 clientSockets[i] = clientSockets[i + 1];
                 i++;
@@ -336,17 +302,9 @@ void *handleClient(void *arg) {
             break;
         }
     }
-    pthread_mutex_lock(&memberMutex);
-    for (int i = 0; i < clientCount; i++) {
-        if (clientSocket = memberInfo[i].socket) {
-            memberInfo[i].disabled = true;
-            break;
-        }
-    }
-    pthread_mutex_unlock(&memberMutex);
     clientCount--;
     pthread_mutex_unlock(&clientMutex);
-    close(clientSocket);
+    close(socket);
     return NULL;
 }
 

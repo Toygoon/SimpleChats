@@ -15,6 +15,7 @@
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <unistd.h>
+
 #include "common.h"
 
 #define MAIN_WIDTH 600
@@ -41,7 +42,7 @@ GtkWidget *inputEntries[3];
 
 char name[NAME_SIZE] = "[DEFAULT]";
 char msg[BUF_SIZE];
-char *serverIP = "127.0.0.1", *clientName = "test";
+char *serverIP = "127.0.0.1", *clientName = "efgh";
 int portNum = 7778, rooms = -1;
 
 int clientSocket;
@@ -49,7 +50,7 @@ struct sockaddr_in servAddr;
 pthread_t connectThread, snd_thread, receiveThread;
 
 int main(int argc, char **argv) {
-    app = gtk_application_new("yu.client.simplechat", G_APPLICATION_FLAGS_NONE);
+    app = gtk_application_new(NULL, G_APPLICATION_FLAGS_NONE);
 
     // g_signal_connect(app, "activate", G_CALLBACK(loginWindow), NULL);
     g_signal_connect(app, "activate", G_CALLBACK(mainWindow), NULL);
@@ -86,19 +87,19 @@ void *receiveData(void *args) {
         res = read(clientSocket, buffer, NAME_SIZE + BUF_SIZE - 1);
         if (res == -1)
             return (void *)-1;
-        
+
         buffer[res] = '\0';
 
         GtkTextIter end;
         logTextBuffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(logText));
         gtk_text_buffer_get_end_iter(logTextBuffer, &end);
-        gtk_text_buffer_insert(logTextBuffer, &end, (const gchar*)buffer, -1);
+        gtk_text_buffer_insert(logTextBuffer, &end, (const gchar *)buffer, -1);
     }
 
     return NULL;
 }
 
-char* createMsg(char* prefix, char* userName, char* data) {
+char *createMsg(char *prefix, char *userName, char *data) {
     static char buffer[BUF_SIZE];
     memset(buffer, 0, sizeof(buffer));
     strcpy(buffer, prefix);
@@ -142,7 +143,7 @@ void logger(char *msg) {
 
 gboolean closeRequest(GtkWindow *window, gpointer user_data) {
     char buffer[BUF_SIZE];
-    
+
     char *data = createMsg("exit", clientName, "abc");
     write(clientSocket, data, strlen(data));
 
@@ -156,12 +157,10 @@ void sendText(void) {
     GtkEntryBuffer *entryBuffer = gtk_entry_get_buffer((GtkEntry *)inputText);
     const char *msg = gtk_entry_buffer_get_text(entryBuffer);
 
-    char buffer[NAME_SIZE + BUF_SIZE];
-    memset(buffer, 0, sizeof(buffer));
-    strncpy(buffer, clientName, strlen(clientName));
-    strncat(buffer, msg, strlen(msg));
+    g_print("my socket : %d\n");
 
-    write(clientSocket, buffer, strlen(buffer));
+    char *data = createMsg("global", clientName, msg);
+    write(clientSocket, data, strlen(data));
     gtk_entry_set_text((GtkEntry *)inputText, "");
 }
 
