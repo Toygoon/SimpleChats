@@ -34,6 +34,7 @@ void handleError(char *);
 void *startServer(void *);
 void logger(char *);
 void *showMembers(void *);
+void newMember(int, char *);
 
 int clientCount = 0, totalRooms = 0;
 int clientSockets[MAX_CLIENT];
@@ -51,11 +52,12 @@ GtkWidget *logText;
 GtkTextBuffer *textBuffer;
 GtkWidget *portInputEntry;
 
-MemberInfo memberInfo[MAX_CLIENT];
+struct MemberInfo *memberLinkedList;
 
 int main(int argc, char **argv) {
     app = gtk_application_new("yu.server.simplechat", G_APPLICATION_FLAGS_NONE);
 
+    memberLinkedList = NULL;
     // g_signal_connect(app, "activate", G_CALLBACK(portWindow), NULL);
     g_signal_connect(app, "activate", G_CALLBACK(manageWindow), NULL);
     g_application_run(G_APPLICATION(app), argc, argv);
@@ -178,16 +180,33 @@ void *showMembers(void *arg) {
     memset(tmp, 0, sizeof(tmp));
     strcpy(tmp, "[INFO] Current members : ");
 
-    for (int i = 0; i < MAX_CLIENT; i++) {
-        if (memberInfo[i].socket == -1)
-            break;
-        strcat(tmp, memberInfo[i].name);
+    //MemberInfo *ptr = memberLinkedList;
 
-        if (i != clientCount - 1)
+
+    for (MemberInfo *ptr = memberLinkedList; ptr != NULL; ptr = ptr->next) {
+        g_print("%s ,", ptr->name);
+        strcat(tmp, ptr->name);
+
+        if (ptr->next != NULL)
             strcat(tmp, ", ");
     }
 
+    g_print("\n");
     strcat(tmp, "\n");
+    logger(tmp);
+}
+
+void newMember(int socket, char* name) {
+    MemberInfo *member = (struct MemberInfo *)malloc(sizeof(MemberInfo));
+    member->socket = socket;
+    strcpy(member->name, name);
+
+    if (memberLinkedList == NULL) {
+        member->next = NULL;
+    } else {
+        member->next = memberLinkedList;
+        memberLinkedList = member;
+    }
 }
 
 static void manageWindow(GtkApplication *app, gpointer user_data) {
@@ -264,6 +283,7 @@ void *handleClient(void *arg) {
             strcat(buf, name);
             strcat(buf, " connected!\n");
 
+            newMember(socket, name);
             logger(buf);
         } else if (strcmp(prefix, "exit") == 0) {
             strcpy(buf, "[INFO] Member ");

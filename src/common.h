@@ -11,7 +11,7 @@
 typedef struct _MemberInfo {
     int socket;
     char name[NAME_SIZE];
-    bool disabled;
+    struct MemberInfo* next;
 } MemberInfo;
 
 #endif

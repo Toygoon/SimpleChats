@@ -157,8 +157,6 @@ void sendText(void) {
     GtkEntryBuffer *entryBuffer = gtk_entry_get_buffer((GtkEntry *)inputText);
     const char *msg = gtk_entry_buffer_get_text(entryBuffer);
 
-    g_print("my socket : %d\n");
-
     char *data = createMsg("global", clientName, msg);
     write(clientSocket, data, strlen(data));
     gtk_entry_set_text((GtkEntry *)inputText, "");
