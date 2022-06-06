@@ -26,6 +26,7 @@ gboolean closeRequest(GtkWindow *window, gpointer user_data) {
 
 void *startServer(void *arg) {
     pthread_mutex_init(&clientMutex, NULL);
+    pthread_mutex_init(&memberMutex, NULL);
     logger("[INFO] Initiating server socket.\n");
     serverSocket = socket(PF_INET, SOCK_STREAM, 0);
 
@@ -54,7 +55,7 @@ void *startServer(void *arg) {
 
     logger("[INFO] Server has started.\n");
 
-    while (1) {
+    while (true) {
         clientAddrSz = sizeof(clientAddr);
         int clientSocket = accept(serverSocket, (struct sockaddr *)&clientAddr, &clientAddrSz);
 
@@ -62,11 +63,10 @@ void *startServer(void *arg) {
         clientSockets[clientCount] = clientSocket;
         pthread_mutex_unlock(&clientMutex);
 
-        g_print("new socket : %d\n", clientSocket);
-
-        pthread_create(&clientsThread[clientCount], NULL, handleClient, (void *)&clientSocket);
-        pthread_detach(clientsThread[clientCount]);
+        pthread_create(&clientsThread, NULL, handleClient, (void *)&clientSocket);
+        pthread_detach(clientsThread);
         clientCount++;
+
         char tmp[BUF_SIZE] = "[CLIENT] Connected client IP: ";
 
         strcat(tmp, inet_ntoa(clientAddr.sin_addr));
@@ -126,7 +126,13 @@ void logger(char *msg) {
     gtk_text_buffer_insert(textBuffer, &end, msg, -1);
 }
 
-void *showMembers(void *arg) {
+void showMembers(void) {
+    if (memberLinkedList == NULL) {
+        logger("[INFO] No members connected.");
+
+        return;
+    }
+
     logger("[INFO] Current members : ");
 
     for (MemberInfo *ptr = memberLinkedList; ptr != NULL; ptr = ptr->next) {
@@ -138,7 +144,7 @@ void *showMembers(void *arg) {
     logger("\n");
 }
 
-void newMember(int socket, char* name) {
+void newMember(int socket, char *name) {
     MemberInfo *member = (MemberInfo *)malloc(sizeof(MemberInfo));
     member->socket = socket;
     strcpy(member->name, name);
@@ -147,8 +153,38 @@ void newMember(int socket, char* name) {
         member->next = NULL;
     else
         member->next = memberLinkedList;
-    
+
     memberLinkedList = member;
+}
+
+void removeMember(int socket) {
+    MemberInfo *ptr = memberLinkedList, *prev = NULL;
+
+    if (ptr == NULL) {
+        memberLinkedList = NULL;
+
+        return;
+    } else if (ptr->next == NULL) {
+        free(memberLinkedList);
+        memberLinkedList = NULL;
+
+        return;
+    }
+
+    while (ptr != NULL) {
+        if (ptr->socket == socket)
+            break;
+        
+        prev = ptr;
+        ptr = ptr->next;
+    }
+
+    if (ptr->next == NULL)
+        prev->next = NULL;
+    else
+        prev->next = ptr->next;
+
+    free(ptr);
 }
 
 static void manageWindow(GtkApplication *app, gpointer user_data) {
@@ -196,13 +232,13 @@ static void manageWindow(GtkApplication *app, gpointer user_data) {
 void *handleClient(void *arg) {
     int socket = *((int *)arg);
     int length = 0;
-    char msg[BUF_SIZE];
+    char msg[BUF_SIZE], prefix[NAME_SIZE], name[NAME_SIZE], data[BUF_SIZE];
+    ;
 
     while ((length = read(socket, msg, sizeof(msg))) != 0) {
         msg[length] = '\0';
 
         int tmp = 0, i;
-        char prefix[NAME_SIZE], name[NAME_SIZE], data[BUF_SIZE];
 
         for (i = 0; msg[tmp] != ','; i++)
             prefix[i] = msg[tmp++];
@@ -225,14 +261,13 @@ void *handleClient(void *arg) {
             strcat(buf, name);
             strcat(buf, " connected!\n");
 
+            pthread_mutex_lock(&memberMutex);
             newMember(socket, name);
-            logger(buf);
-        } else if (strcmp(prefix, "exit") == 0) {
-            strcpy(buf, "[INFO] Member ");
-            strcat(buf, name);
-            strcat(buf, " disconnected.\n");
+            pthread_mutex_unlock(&memberMutex);
 
             logger(buf);
+        } else if (strcmp(prefix, "exit") == 0) {
+            break;
         } else if (strcmp(prefix, "global") == 0) {
             buf[0] = '[';
             strcat(buf, name);
@@ -243,6 +278,12 @@ void *handleClient(void *arg) {
             logger(buf);
         }
     }
+
+    strcpy(buf, "[INFO] Member ");
+    strcat(buf, name);
+    strcat(buf, " disconnected.\n");
+
+    logger(buf);
 
     pthread_mutex_lock(&clientMutex);
     for (int i = 0; i < clientCount; i++) {
@@ -257,6 +298,11 @@ void *handleClient(void *arg) {
     }
     clientCount--;
     pthread_mutex_unlock(&clientMutex);
+
+    pthread_mutex_lock(&memberMutex);
+    removeMember(socket);
+    pthread_mutex_unlock(&memberMutex);
+
     close(socket);
     return NULL;
 }

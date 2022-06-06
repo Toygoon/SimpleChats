@@ -9,8 +9,8 @@
 
 #include "common.h"
 
-#define MAIN_WIDTH 600
-#define MAIN_HEIGHT 600
+#define MAIN_WIDTH 500
+#define MAIN_HEIGHT 500
 
 #define PORT_WIN_WIDTH 200
 #define PORT_WIN_HEIGHT 100
@@ -19,23 +19,25 @@ static void manageWindow(GtkApplication *, gpointer);
 static void portWindow(GtkApplication *, gpointer);
 gint deleteEvent(GtkWidget *, GdkEvent *, gpointer);
 static void getPortText(GtkApplication *, gpointer);
-void *handleClient(void *);
+
 void sendMsg(char *, int);
 void handleError(char *);
-void *startServer(void *);
 void logger(char *);
-void *showMembers(void *);
-void newMember(int, char *);
 
-int clientCount = 0, totalRooms = 0;
-int clientSockets[MAX_CLIENT];
+void *startServer(void *);
+void *handleClient(void *);
+
+void showMembers(void);
+void newMember(int, char *);
+void removeMember(int);
+
+int clientCount = 0, clientSockets[MAX_CLIENT], clientAddrSz, portNum = 7778;
 pthread_mutex_t clientMutex, memberMutex;
 
-char buf[BUF_SIZE], **roomNames;
+char buf[BUF_SIZE];
 int serverSocket;
 struct sockaddr_in servAddr, clientAddr;
-int clientAddrSz, portNum = 7778;
-pthread_t clientsThread[MAX_CLIENT], serverThread;
+pthread_t clientsThread, serverThread;
 
 GtkApplication *app;
 GtkWidget *portWin;
