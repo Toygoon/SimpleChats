@@ -244,43 +244,85 @@ void *handleClient(void *arg) {
     char msg[BUF_SIZE], buffer[BUF_SIZE];
 
     while ((length = read(clientSocket, msg, sizeof(msg))) != 0) {
-        char prefix[NAME_SIZE], name[NAME_SIZE], data[BUF_SIZE], *ptr;
-        int p = 0;
+        msg[length] = '\0';
+        g_print("%s\n", msg);
 
-        ptr = strtok(msg, ",");
-        strcpy(prefix, ptr);
-        ptr = strtok(NULL, ",");
-        strcpy(name, ptr);
-        ptr = strtok(NULL, ",");
-        strcpy(data, ptr);
+        int tmp = 0, i;
+        char prefix[NAME_SIZE], name[NAME_SIZE], data[BUF_SIZE];
 
-        g_print("%s %s %s\n", prefix, name, data);
+        for(i=0; msg[tmp] != ','; i++)
+            prefix[i] = msg[tmp++];
+        prefix[++i] = '\0';
+        g_print("prefix : %s\n", prefix);
 
-        if (strcmp(prefix, "new") == 0) {
-            MemberInfo newMem;
-            newMem.socket = clientSocket;
-            strcpy(newMem.name, name);
-            newMem.disabled = false;
-            memberInfo[clientCount - 1] = newMem;
 
-            strcpy(buffer, "[INFO] New member ");
-            strcat(buffer, name);
-            strcat(buffer, " has connected!\n");
-        } else if (strcmp(prefix, "exit") == 0) {
-            strcpy(buffer, "[INFO] Member ");
-            strcat(buffer, name);
-            strcat(buffer, " has disconnected.\n");
-        }
+        tmp++;
+        for (i = 0; msg[tmp] != ','; i++)
+            name[i] = msg[tmp++];
+        name[i] = '\0';
+        g_print("name : %s\n", name);
 
-        GtkTextIter end;
-        sendMsg(data, strlen(data));
+        tmp++;
+        for (i = 0; msg[tmp] != '\0'; i++)
+            data[i] = msg[tmp++];
 
-        textBuffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(logText));
-        gtk_text_buffer_get_end_iter(textBuffer, &end);
-        gtk_text_buffer_insert(textBuffer, &end, (const gchar *)buffer, -1);
+        data[i] = '\0';
+        g_print("data : %s\n", data);
+        /*
+                char prefix[NAME_SIZE], name[NAME_SIZE], data[BUF_SIZE], *ptr;
+                char *arr[3] = {
+                    NULL,
+                };
 
-        if (strcmp(prefix, "exit") == 0)
-            break;
+                int i = 0;
+                while (ptr != NULL) {
+                    arr[i] = ptr;
+                    i++;
+
+                    ptr = strtok(NULL, ",");
+                }
+
+                for (int i = 0; i<3; i++) {
+                    if (arr[i] != NULL)
+                        g_print("%s\n", arr[i]);
+                }
+        */
+        /*
+                ptr = strtok(msg, ",");
+                strcpy(prefix, ptr);
+                ptr = strtok(NULL, ",");
+                strcpy(name, ptr);
+                ptr = strtok(NULL, ",");
+                strcpy(data, ptr);
+
+                g_print("%s %s %s\n", prefix, name, data);
+
+                if (strcmp(prefix, "new") == 0) {
+                    MemberInfo newMem;
+                    newMem.socket = clientSocket;
+                    strcpy(newMem.name, name);
+                    newMem.disabled = false;
+                    memberInfo[clientCount - 1] = newMem;
+
+                    strcpy(buffer, "[INFO] New member ");
+                    strcat(buffer, name);
+                    strcat(buffer, " has connected!\n");
+                } else if (strcmp(prefix, "exit") == 0) {
+                    strcpy(buffer, "[INFO] Member ");
+                    strcat(buffer, name);
+                    strcat(buffer, " has disconnected.\n");
+                }
+
+                GtkTextIter end;
+                sendMsg(data, strlen(data));
+
+                textBuffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(logText));
+                gtk_text_buffer_get_end_iter(textBuffer, &end);
+                gtk_text_buffer_insert(textBuffer, &end, (const gchar *)buffer, -1);
+
+                if (strcmp(prefix, "exit") == 0)
+                    break;
+                    */
     }
 
     pthread_mutex_lock(&clientMutex);
