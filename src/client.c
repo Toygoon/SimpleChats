@@ -98,6 +98,18 @@ void *receiveData(void *args) {
     return NULL;
 }
 
+char* createMsg(char* prefix, char* userName, char* data) {
+    static char buffer[BUF_SIZE];
+    memset(buffer, 0, sizeof(buffer));
+    strcpy(buffer, prefix);
+    strcat(buffer, ",");
+    strcat(buffer, clientName);
+    strcat(buffer, ",");
+    strcat(buffer, data);
+
+    return &buffer;
+}
+
 void *connectServer(void *args) {
     void *threadReturn;
     clientSocket = socket(PF_INET, SOCK_STREAM, 0);
@@ -114,11 +126,8 @@ void *connectServer(void *args) {
         exit(1);
     }
 
-    char buffer[BUF_SIZE];
-    memset(buffer, 0, sizeof(buffer));
-    strcpy(buffer, "(NEW)");
-    strncat(buffer, clientName, strlen(clientName));
-    write(clientSocket, buffer, strlen(buffer));
+    char *data = createMsg("new", clientName, "abc");
+    write(clientSocket, data, strlen(data));
 
     logger("[INFO] Connected!\n");
 }
@@ -133,11 +142,9 @@ void logger(char *msg) {
 
 gboolean closeRequest(GtkWindow *window, gpointer user_data) {
     char buffer[BUF_SIZE];
-    memset(buffer, 0, sizeof(buffer));
-    strcpy(buffer, "(EXIT)");
-    strncat(buffer, clientName, strlen(clientName));
-
-    write(clientSocket, buffer, strlen(buffer));
+    
+    char *data = createMsg("exit", clientName, "abc");
+    write(clientSocket, data, strlen(data));
 
     close(clientSocket);
     gtk_window_close(window);

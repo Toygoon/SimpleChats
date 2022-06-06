@@ -170,11 +170,23 @@ void logger(char *msg) {
 }
 
 void *showMembers(void *arg) {
-    /*
-    pthread_mutex_lock(&roomMutex);
-    clientSockets[clientCount++] = clientSocket;
-    pthread_mutex_unlock(&roomMutex);
-    */
+    static char tmp[BUF_SIZE];
+    memset(tmp, 0, sizeof(tmp));
+    strcpy(tmp, "[INFO] Current members : ");
+
+    for (int i = 0; i < clientCount; i++) {
+        strcat(tmp, memberInfo[i].name);
+
+        if (i != clientCount - 1)
+            strcat(tmp, ", ");
+    }
+
+    strcat(tmp, "\n");
+    GtkTextIter end;
+    
+    textBuffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(logText));
+    gtk_text_buffer_get_end_iter(textBuffer, &end);
+    gtk_text_buffer_insert(textBuffer, &end, (const gchar *)tmp, -1);
 }
 
 static void manageWindow(GtkApplication *app, gpointer user_data) {
@@ -223,50 +235,45 @@ void *handleClient(void *arg) {
     pthread_mutex_init(&memberMutex, NULL);
     int clientSocket = *((int *)arg);
     int length = 0;
-    char msg[BUF_SIZE];
+    char msg[BUF_SIZE], buffer[BUF_SIZE];
 
     while ((length = read(clientSocket, msg, sizeof(msg))) != 0) {
-        char prefix[NAME_SIZE];
-        int tmp = 0;
+        char prefix[NAME_SIZE], name[NAME_SIZE], data[BUF_SIZE], *ptr;
+        int p = 0;
 
-        if (msg[0] == '(') {
-            msg[length] = '\0';
+        ptr = strtok(msg, ",");
+        strcpy(prefix, ptr);
+        ptr = strtok(NULL, ",");
+        strcpy(name, ptr);
+        ptr = strtok(NULL, ",");
+        strcpy(data, ptr);
 
-            char name[NAME_SIZE], buffer[BUF_SIZE];
-            for (int i = 1; msg[i] != ')'; i++)
-                prefix[tmp++] = msg[i];
+        g_print("%s %s %s\n", prefix, name, data);
 
-            tmp = 0;
-            for (int i = strlen(prefix) + 2; i < length; i++)
-                name[tmp++] = msg[i];
+        if (strcmp(prefix, "new") == 0) {
+            MemberInfo newMem;
+            newMem.socket = clientSocket;
+            strcpy(newMem.name, name);
+            memberInfo[clientCount - 1] = newMem;
 
-
-            memset(buffer, 0, sizeof(buffer));
-            if (strcmp(prefix, "NEW") == 0) {
-                MemberInfo current;
-                current.socket = clientSocket;
-                strncpy(current.name, name, strlen(name));
-                memberInfo[clientCount - 1] = current;
-
-                strcpy(buffer, "[INFO] New member ");
-                strncat(buffer, name, strlen(name));
-                strcat(buffer, "has connected!\n");
-                g_print(buffer);
-            } else if (strcmp(prefix, "EXIT") == 0) {
-                g_print("EXIT");
-            }
-
-        } else {
-            msg[length++] = '\n';
-            msg[length] = '\0';
-            GtkTextIter end;
-
-            sendMsg(msg, length);
-
-            textBuffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(logText));
-            gtk_text_buffer_get_end_iter(textBuffer, &end);
-            gtk_text_buffer_insert(textBuffer, &end, (const gchar *)msg, -1);
+            strcpy(buffer, "[INFO] New member ");
+            strcat(buffer, name);
+            strcat(buffer, " has connected!\n");
+        } else if (strcmp(prefix, "exit") == 0) {
+            strcpy(buffer, "[INFO] Member ");
+            strcat(buffer, name);
+            strcat(buffer, " has disconnected.\n");
         }
+
+        GtkTextIter end;
+        sendMsg(data, strlen(data));
+
+        textBuffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(logText));
+        gtk_text_buffer_get_end_iter(textBuffer, &end);
+        gtk_text_buffer_insert(textBuffer, &end, (const gchar *)buffer, -1);
+
+        if (strcmp(prefix, "exit") == 0)
+            break;
     }
 
     pthread_mutex_lock(&clientMutex);
@@ -280,6 +287,18 @@ void *handleClient(void *arg) {
             break;
         }
     }
+    pthread_mutex_lock(&memberMutex);
+    for (int i = 0; i < clientCount; i++) {
+        if (clientSocket = memberInfo[i].socket) {
+            while (i < clientCount - 1) {
+                memberInfo[i] = memberInfo[i + 1];
+                i++;
+            }
+
+            break;
+        }
+    }
+    pthread_mutex_unlock(&memberMutex);
     clientCount--;
     pthread_mutex_unlock(&clientMutex);
     close(clientSocket);
