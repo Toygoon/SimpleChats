@@ -55,12 +55,6 @@ MemberInfo memberInfo[MAX_CLIENT];
 
 int main(int argc, char **argv) {
     app = gtk_application_new("yu.server.simplechat", G_APPLICATION_FLAGS_NONE);
-    roomNames = (char **)calloc(MAX_ROOM, sizeof(char *));
-
-    for (int i = 0; i < MAX_CLIENT; i++) {
-        memberInfo[i].socket = -1;
-        memberInfo[i].disabled = true;
-    }
 
     // g_signal_connect(app, "activate", G_CALLBACK(portWindow), NULL);
     g_signal_connect(app, "activate", G_CALLBACK(manageWindow), NULL);
@@ -185,9 +179,6 @@ void *showMembers(void *arg) {
     strcpy(tmp, "[INFO] Current members : ");
 
     for (int i = 0; i < MAX_CLIENT; i++) {
-        if (memberInfo[i].disabled)
-            continue;
-
         if (memberInfo[i].socket == -1)
             break;
         strcat(tmp, memberInfo[i].name);
