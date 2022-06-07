@@ -17,6 +17,25 @@ int main(int argc, char **argv) {
     return 0;
 }
 
+char *gtkui_utf8_validate(char *data) {
+    const gchar *end;
+    char *unicode = NULL;
+
+    unicode = data;
+    if (!g_utf8_validate(data, -1, &end)) {
+        /* if "end" pointer is at beginning of string, we have no valid text to print */
+        if (end == unicode) return (NULL);
+
+        /* cut off the invalid part so we don't lose the whole string */
+        /* this shouldn't happen often */
+        unicode = (char *)end;
+        *unicode = 0;
+        unicode = data;
+    }
+
+    return (unicode);
+}
+
 static void getLoginData(GtkApplication *_app, gpointer user_data) {
     GtkEntryBuffer *entryBuffer = gtk_entry_get_buffer((GtkEntry *)inputEntries[0]);
     // serverIP = gtk_entry_buffer_get_text(entryBuffer);
@@ -48,22 +67,38 @@ void *receiveData(void *args) {
         buffer[res] = '\0';
 
         if (buffer[0] != '[') {
-            char prefix[NAME_SIZE], tmp[NAME_SIZE];
+            char prefix[NAME_SIZE], numtmp[NAME_SIZE], nametmp[NAME_SIZE];
 
-            int i;
-            for (i = 0; buffer[i] != ','; i++)
-                prefix[i] = buffer[i];
-            prefix[i++] = '\0';
+            int i, tmp = 0;
+            for (i = 0; buffer[tmp] != ','; i++)
+                prefix[i] = buffer[tmp++];
+            prefix[i] = '\0';
 
-            if (strcmp(prefix, "newroom") == 0) {
-                roomNum = atoi(buffer[i]);
-                g_print("roomNum : %d\n", roomNum);
+            if (strcmp(prefix, "newroom") == 0 || strcmp(prefix, "room") == 0) {
+                tmp += 1;
+                for (i = 0; buffer[tmp] != ','; i++)
+                    numtmp[i] = buffer[tmp++];
+                numtmp[i] = '\0';
+
+                tmp += 1;
+                for (i = 0; buffer[tmp] != '\0'; i++)
+                    nametmp[i] = buffer[tmp++];
+                nametmp[i] = '\0';
+
+                roomNum = atoi(numtmp);
+                sprintf(buffer, "[ROOM] Entered the room : %s\n", nametmp);
+                logTextBuffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(logText));
+                gtk_text_buffer_set_text(logTextBuffer, "", 0);
+            } else if (strcmp(prefix, "roominfo") == 0) {
+                tmp += 1;
+                for (i = 0; buffer[tmp] != ','; i++)
+                    numtmp[i] = buffer[tmp++];
+                numtmp[i] = '\0';
+                g_print("%s\n", numtmp);
             }
         }
-        GtkTextIter end;
-        logTextBuffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(logText));
-        gtk_text_buffer_get_end_iter(logTextBuffer, &end);
-        gtk_text_buffer_insert(logTextBuffer, &end, (const gchar *)buffer, -1);
+
+        logger(buffer);
     }
 
     return NULL;
@@ -105,10 +140,15 @@ void *connectServer(void *args) {
 
 void logger(char *msg) {
     GtkTextIter end;
+    gchar *unicode;
+
+    if ((unicode = gtkui_utf8_validate(msg)) == NULL)
+        return;
+
     logTextBuffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(logText));
     gtk_text_buffer_get_end_iter(logTextBuffer, &end);
-
-    gtk_text_buffer_insert(logTextBuffer, &end, msg, -1);
+    gtk_text_buffer_insert(logTextBuffer, &end, unicode, -1);
+    gtk_text_view_scroll_to_iter(GTK_TEXT_VIEW(logText), &end, 0, false, 1.0, 0);
 }
 
 gboolean closeRequest(GtkWindow *window, gpointer user_data) {
@@ -133,9 +173,6 @@ void sendText(void) {
         char *data = createMsg("private", clientName, msg);
         write(clientSocket, data, strlen(data));
     } else if (msg[0] == '/') {
-    } else if (roomNum != -1) {
-        char prefix[NAME_SIZE];
-        sprintf(prefix, "%s,%d", "room", roomNum);
     } else {
         char *data = createMsg("global", clientName, msg);
         write(clientSocket, data, strlen(data));
@@ -149,6 +186,8 @@ void sendRoomRequest(GtkApplication *_app, GtkApplication *entry) {
 
     char *data = createMsg("newroom", clientName, msg);
     write(clientSocket, data, strlen(data));
+
+    gtk_window_close((GtkWindow *)_app);
 }
 
 void createRoomRequest(GtkApplication *_app, gpointer user_data) {
@@ -187,6 +226,11 @@ void createRoomRequest(GtkApplication *_app, gpointer user_data) {
     gtk_widget_show_all(window);
 }
 
+void enterRoomRequest(GtkApplication *_app, gpointer user_data) {
+    char *data = createMsg("roominfo", clientName, "");
+    write(clientSocket, data, strlen(data));
+}
+
 static void mainWindow(GtkApplication *app, gpointer user_data) {
     // gtk_window_close((GtkWindow*)loginWin);
     GtkWidget *window;
@@ -194,6 +238,7 @@ static void mainWindow(GtkApplication *app, gpointer user_data) {
     GtkWidget *exitButton;
     GtkWidget *grid;
     GtkWidget *newRoom;
+    GtkWidget *enterRoom;
     void *threadReturn;
 
     window = gtk_application_window_new(app);
@@ -203,6 +248,7 @@ static void mainWindow(GtkApplication *app, gpointer user_data) {
 
     logText = gtk_text_view_new();
     logTextBuffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(logText));
+    gtk_text_view_set_editable((GtkTextView *)logText, false);
 
     inputText = gtk_entry_new();
     gtk_entry_grab_focus_without_selecting(GTK_ENTRY(inputText));
@@ -222,6 +268,9 @@ static void mainWindow(GtkApplication *app, gpointer user_data) {
     g_signal_connect(exitButton, "clicked", G_CALLBACK(closeRequest), NULL);
 
     newRoom = gtk_button_new_with_label("New\nRoom");
+    g_signal_connect(newRoom, "clicked", G_CALLBACK(createRoomRequest), NULL);
+
+    enterRoom = gtk_button_new_with_label("New\nRoom");
     g_signal_connect(newRoom, "clicked", G_CALLBACK(createRoomRequest), NULL);
 
     gtk_container_add(GTK_CONTAINER(window), grid);

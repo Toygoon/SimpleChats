@@ -17,6 +17,25 @@ int main(int argc, char **argv) {
     return 0;
 }
 
+char *gtkui_utf8_validate(char *data) {
+    const gchar *end;
+    char *unicode = NULL;
+
+    unicode = data;
+    if (!g_utf8_validate(data, -1, &end)) {
+        /* if "end" pointer is at beginning of string, we have no valid text to print */
+        if (end == unicode) return (NULL);
+
+        /* cut off the invalid part so we don't lose the whole string */
+        /* this shouldn't happen often */
+        unicode = (char *)end;
+        *unicode = 0;
+        unicode = data;
+    }
+
+    return (unicode);
+}
+
 gboolean closeRequest(GtkWindow *window, gpointer user_data) {
     close(serverSocket);
     gtk_window_close(window);
@@ -118,26 +137,6 @@ static void portWindow(GtkApplication *app, gpointer user_data) {
     gtk_widget_show_all(portWin);
 }
 
-/* make sure data is valid UTF8 */
-char *gtkui_utf8_validate(char *data) {
-    const gchar *end;
-    char *unicode = NULL;
-
-    unicode = data;
-    if (!g_utf8_validate(data, -1, &end)) {
-        /* if "end" pointer is at beginning of string, we have no valid text to print */
-        if (end == unicode) return (NULL);
-
-        /* cut off the invalid part so we don't lose the whole string */
-        /* this shouldn't happen often */
-        unicode = (char *)end;
-        *unicode = 0;
-        unicode = data;
-    }
-
-    return (unicode);
-}
-
 void logger(char *msg) {
     GtkTextIter end;
     gchar *unicode;
@@ -181,7 +180,6 @@ void newMember(int socket, char *name) {
 
     memberLinkedList = member;
 }
-
 
 void removeMember(int socket) {
     MemberInfo *ptr = memberLinkedList, *prev = NULL;
@@ -234,9 +232,26 @@ int createNewRoom(int socket, char *name) {
     strcpy(room->name, name);
     room->memberCount = 1;
     room->memberSocket[room->memberCount - 1] = socket;
+    room->next = roomLinkedList;
     roomLinkedList = room;
 
-    sprintf(tmp, "newroom,%d", room->id);
+    g_print("%s\n", tmp);
+    write(socket, tmp, strlen(tmp));
+
+    sprintf(tmp, "[ROOM] Created new room %s\n", room->name);
+    logger(tmp);
+}
+
+void sendRoomList(int socket) {
+    char tmp[BUF_SIZE];
+    strcpy(tmp, "roominfo,");
+    for (RoomInfo *ptr = roomLinkedList; ptr != NULL; ptr = ptr->next) {
+        strcat(tmp, ptr->name);
+        
+        if (ptr->next != NULL)
+            strcat(tmp, ",");
+    }
+
     write(socket, tmp, strlen(tmp));
 }
 

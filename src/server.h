@@ -15,6 +15,8 @@
 #define PORT_WIN_WIDTH 200
 #define PORT_WIN_HEIGHT 100
 
+char *gtkui_utf8_validate(char *);
+
 static void manageWindow(GtkApplication *, gpointer);
 static void portWindow(GtkApplication *, gpointer);
 gint deleteEvent(GtkWidget *, GdkEvent *, gpointer);
@@ -32,6 +34,7 @@ void newMember(int, char *);
 void removeMember(int);
 int findSocketByName(char *);
 int createNewRoom(int, char *);
+void sendRoomList(int);
 
 int clientCount = 0, clientSockets[MAX_CLIENT], clientAddrSz, portNum = 7778, roomId = 0;
 pthread_mutex_t clientMutex, memberMutex;

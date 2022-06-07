@@ -18,9 +18,12 @@
 #define ROOM_WIN_WIDTH 200
 #define ROOM_WIN_HEIGHT 50
 
+char *gtkui_utf8_validate(char *);
+
 static void loginWindow(GtkApplication *, gpointer);
 static void mainWindow(GtkApplication *, gpointer);
 void createRoomRequest(GtkApplication *, gpointer);
+void enterRoomRequest(GtkApplication *, gpointer);
 gint deleteEvent(GtkWidget *, GdkEvent *, gpointer);
 void *connectServer(void *);
 void getRoomList(void);
