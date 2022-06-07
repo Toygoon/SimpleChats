@@ -47,6 +47,19 @@ void *receiveData(void *args) {
 
         buffer[res] = '\0';
 
+        if (buffer[0] != '[') {
+            char prefix[NAME_SIZE], tmp[NAME_SIZE];
+
+            int i;
+            for (i = 0; buffer[i] != ','; i++)
+                prefix[i] = buffer[i];
+            prefix[i++] = '\0';
+
+            if (strcmp(prefix, "newroom") == 0) {
+                roomNum = atoi(buffer[i]);
+                g_print("roomNum : %d\n", roomNum);
+            }
+        }
         GtkTextIter end;
         logTextBuffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(logText));
         gtk_text_buffer_get_end_iter(logTextBuffer, &end);
@@ -114,11 +127,15 @@ void sendText(void) {
     GtkEntryBuffer *entryBuffer = gtk_entry_get_buffer((GtkEntry *)inputText);
     const char *msg = gtk_entry_buffer_get_text(entryBuffer);
 
-    if (msg[0] == '@') {
+    if (strlen(msg) < 1) {
+        return;
+    } else if (msg[0] == '@') {
         char *data = createMsg("private", clientName, msg);
         write(clientSocket, data, strlen(data));
     } else if (msg[0] == '/') {
-        
+    } else if (roomNum != -1) {
+        char prefix[NAME_SIZE];
+        sprintf(prefix, "%s,%d", "room", roomNum);
     } else {
         char *data = createMsg("global", clientName, msg);
         write(clientSocket, data, strlen(data));
@@ -126,11 +143,57 @@ void sendText(void) {
     gtk_entry_set_text((GtkEntry *)inputText, "");
 }
 
+void sendRoomRequest(GtkApplication *_app, GtkApplication *entry) {
+    GtkEntryBuffer *entryBuffer = gtk_entry_get_buffer((GtkEntry *)entry);
+    const char *msg = gtk_entry_buffer_get_text(entryBuffer);
+
+    char *data = createMsg("newroom", clientName, msg);
+    write(clientSocket, data, strlen(data));
+}
+
+void createRoomRequest(GtkApplication *_app, gpointer user_data) {
+    GtkWidget *label;
+    GtkWidget *button;
+    GtkWidget *entry;
+    GtkWidget *grid;
+    GtkWidget *window;
+    gchar *text;
+
+    window = gtk_application_window_new(app);
+    gtk_window_set_title(GTK_WINDOW(window), "Create new room");
+    gtk_window_set_default_size(GTK_WINDOW(window), ROOM_WIN_WIDTH, ROOM_WIN_HEIGHT);
+
+    label = gtk_label_new("Name : ");
+    entry = gtk_entry_new();
+    gtk_entry_set_placeholder_text(GTK_ENTRY(entry), "New Room");
+
+    guint margin = 5;
+    grid = gtk_grid_new();
+
+    gtk_grid_set_row_homogeneous(GTK_GRID(grid), TRUE);
+    gtk_grid_set_column_homogeneous(GTK_GRID(grid), TRUE);
+    gtk_grid_set_row_spacing(GTK_GRID(grid), margin);
+    gtk_grid_set_column_spacing(GTK_GRID(grid), margin);
+
+    gtk_container_add(GTK_CONTAINER(window), grid);
+
+    button = gtk_button_new_with_label("OK");
+    g_signal_connect(button, "clicked", G_CALLBACK(sendRoomRequest), (GtkWidget *)entry);
+
+    gtk_grid_attach(GTK_GRID(grid), label, 0, 0, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), entry, 1, 0, 2, 1);
+    gtk_grid_attach(GTK_GRID(grid), button, 0, 3, 3, 1);
+
+    gtk_widget_show_all(window);
+}
+
 static void mainWindow(GtkApplication *app, gpointer user_data) {
     // gtk_window_close((GtkWindow*)loginWin);
     GtkWidget *window;
-    GtkWidget *button;
+    GtkWidget *sendButton;
+    GtkWidget *exitButton;
     GtkWidget *grid;
+    GtkWidget *newRoom;
     void *threadReturn;
 
     window = gtk_application_window_new(app);
@@ -142,6 +205,7 @@ static void mainWindow(GtkApplication *app, gpointer user_data) {
     logTextBuffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(logText));
 
     inputText = gtk_entry_new();
+    gtk_entry_grab_focus_without_selecting(GTK_ENTRY(inputText));
 
     guint margin = 2;
     grid = gtk_grid_new();
@@ -151,14 +215,22 @@ static void mainWindow(GtkApplication *app, gpointer user_data) {
     gtk_grid_set_row_spacing(GTK_GRID(grid), margin);
     gtk_grid_set_column_spacing(GTK_GRID(grid), margin);
 
-    button = gtk_button_new_with_label("OK");
-    g_signal_connect(button, "clicked", G_CALLBACK(sendText), NULL);
+    sendButton = gtk_button_new_with_label("Send");
+    g_signal_connect(sendButton, "clicked", G_CALLBACK(sendText), NULL);
+
+    exitButton = gtk_button_new_with_label("Exit");
+    g_signal_connect(exitButton, "clicked", G_CALLBACK(closeRequest), NULL);
+
+    newRoom = gtk_button_new_with_label("New\nRoom");
+    g_signal_connect(newRoom, "clicked", G_CALLBACK(createRoomRequest), NULL);
 
     gtk_container_add(GTK_CONTAINER(window), grid);
 
     gtk_grid_attach(GTK_GRID(grid), logText, 0, 0, 5, 5);
-    gtk_grid_attach(GTK_GRID(grid), inputText, 0, 5, 4, 1);
-    gtk_grid_attach(GTK_GRID(grid), button, 4, 5, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), inputText, 0, 5, 5, 1);
+    gtk_grid_attach(GTK_GRID(grid), exitButton, 6, 0, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), newRoom, 6, 4, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), sendButton, 6, 5, 1, 1);
     gtk_widget_show_all(window);
 
     pthread_create(&connectThread, NULL, connectServer, NULL);

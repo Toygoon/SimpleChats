@@ -24,7 +24,6 @@ static void driver(int);
 
 int main() {
     // 출력 메시지에 사용될 버퍼
-    char *msg;
 
     // 현재 Terminal의 크기 계산
     ioctl(STDOUT_FILENO, TIOCGWINSZ, &windowSize);

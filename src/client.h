@@ -15,8 +15,12 @@
 #define LOGIN_WIN_WIDTH 200
 #define LOGIN_WIN_HEIGHT 100
 
+#define ROOM_WIN_WIDTH 200
+#define ROOM_WIN_HEIGHT 50
+
 static void loginWindow(GtkApplication *, gpointer);
 static void mainWindow(GtkApplication *, gpointer);
+void createRoomRequest(GtkApplication *, gpointer);
 gint deleteEvent(GtkWidget *, GdkEvent *, gpointer);
 void *connectServer(void *);
 void getRoomList(void);
@@ -33,7 +37,7 @@ GtkWidget *inputEntries[3];
 
 char name[NAME_SIZE] = "[DEFAULT]", msg[BUF_SIZE];
 char *serverIP = "127.0.0.1", *clientName = "efgh";
-int portNum = 7778, clientSocket;
+int portNum = 7778, clientSocket, roomNum = -1;
 struct sockaddr_in servAddr;
 
 pthread_t connectThread, snd_thread, receiveThread;

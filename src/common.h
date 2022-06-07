@@ -31,4 +31,12 @@ typedef struct _MemberInfo {
     struct MemberInfo* next;
 } MemberInfo;
 
+typedef struct _RoomInfo {
+    int id;
+    char name[NAME_SIZE];
+    int memberCount;
+    int memberSocket[MAX_CLIENT];
+    struct RoomInfo* next;
+} RoomInfo;
+
 #endif

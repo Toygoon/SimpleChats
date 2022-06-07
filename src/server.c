@@ -182,6 +182,7 @@ void newMember(int socket, char *name) {
     memberLinkedList = member;
 }
 
+
 void removeMember(int socket) {
     MemberInfo *ptr = memberLinkedList, *prev = NULL;
 
@@ -223,6 +224,20 @@ int findSocketByName(char *name) {
         }
 
     return res;
+}
+
+int createNewRoom(int socket, char *name) {
+    char tmp[BUF_SIZE];
+    RoomInfo *room = (RoomInfo *)malloc(sizeof(RoomInfo));
+
+    room->id = roomId++;
+    strcpy(room->name, name);
+    room->memberCount = 1;
+    room->memberSocket[room->memberCount - 1] = socket;
+    roomLinkedList = room;
+
+    sprintf(tmp, "newroom,%d", room->id);
+    write(socket, tmp, strlen(tmp));
 }
 
 static void manageWindow(GtkApplication *app, gpointer user_data) {
@@ -307,6 +322,9 @@ void *handleClient(void *arg) {
             logger(buf);
         } else if (strcmp(prefix, "exit") == 0) {
             break;
+        } else if (strcmp(prefix, "newroom") == 0) {
+            createNewRoom(socket, data);
+        } else if (strcmp(prefix, "room") == 0) {
         } else if (strcmp(prefix, "private") == 0) {
             pthread_mutex_lock(&memberMutex);
             pthread_mutex_lock(&clientMutex);

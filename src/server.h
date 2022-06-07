@@ -31,8 +31,9 @@ void showMembers(void);
 void newMember(int, char *);
 void removeMember(int);
 int findSocketByName(char *);
+int createNewRoom(int, char *);
 
-int clientCount = 0, clientSockets[MAX_CLIENT], clientAddrSz, portNum = 7778;
+int clientCount = 0, clientSockets[MAX_CLIENT], clientAddrSz, portNum = 7778, roomId = 0;
 pthread_mutex_t clientMutex, memberMutex;
 
 char buf[BUF_SIZE];
@@ -47,5 +48,6 @@ GtkTextBuffer *textBuffer;
 GtkWidget *portInputEntry;
 
 struct MemberInfo *memberLinkedList = NULL;
+struct RoomInfo *roomLinkedList = NULL;
 
 #endif
