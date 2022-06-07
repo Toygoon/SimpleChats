@@ -118,12 +118,37 @@ static void portWindow(GtkApplication *app, gpointer user_data) {
     gtk_widget_show_all(portWin);
 }
 
+ /* make sure data is valid UTF8 */
+ char *gtkui_utf8_validate(char *data) {
+    const gchar *end;
+    char *unicode = NULL;
+  
+    unicode = data;
+    if(!g_utf8_validate (data, -1, &end)) {
+       /* if "end" pointer is at beginning of string, we have no valid text to print */
+       if(end == unicode) return(NULL);
+  
+       /* cut off the invalid part so we don't lose the whole string */
+       /* this shouldn't happen often */
+       unicode = (char *)end;
+       *unicode = 0;
+       unicode = data;
+    }
+  
+    return(unicode);
+ }
+
 void logger(char *msg) {
     GtkTextIter end;
+    gchar *unicode;
+
+    if ((unicode = gtkui_utf8_validate(msg)) == NULL)
+        return;
+
     textBuffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(logText));
     gtk_text_buffer_get_end_iter(textBuffer, &end);
-
-    gtk_text_buffer_insert(textBuffer, &end, msg, -1);
+    gtk_text_buffer_insert(textBuffer, &end, unicode, -1);
+    gtk_text_view_scroll_to_iter(GTK_TEXT_VIEW(logText), &end, 0, false, 1.0, 0);
 }
 
 void showMembers(void) {
@@ -197,8 +222,6 @@ int findSocketByName(char *name) {
             break;
         }
 
-    g_print("found socket %d\n", res);
-
     return res;
 }
 
@@ -248,9 +271,10 @@ void *handleClient(void *arg) {
     int socket = *((int *)arg);
     int length = 0;
     char msg[BUF_SIZE], prefix[NAME_SIZE], name[NAME_SIZE], data[BUF_SIZE];
-    ;
 
     while ((length = read(socket, msg, sizeof(msg))) != 0) {
+        memset(prefix, 0, sizeof(prefix));
+        memset(data, 0, sizeof(data));
         msg[length] = '\0';
 
         int tmp = 0, i;
@@ -284,38 +308,66 @@ void *handleClient(void *arg) {
         } else if (strcmp(prefix, "exit") == 0) {
             break;
         } else if (strcmp(prefix, "private") == 0) {
+            pthread_mutex_lock(&memberMutex);
+            pthread_mutex_lock(&clientMutex);
+            
             int destSocket;
-            char dest[NAME_SIZE];
+            char private[BUF_SIZE], dest[NAME_SIZE];
+            g_print("%s\n", msg);
+            memset(private, 0, sizeof(private));
+            memset(dest, 0, sizeof(dest));
 
-            tmp = 0;
-            for (i = 0; data[tmp] != ','; i++)
+            tmp = 1;
+            for (i = 0; data[tmp] != ' '; i++)
                 dest[i] = data[tmp++];
             dest[i] = '\0';
 
             tmp++;
-            for (i = 0; data[tmp] != '\0'; i++)
+            
+            memset(buf, 0, sizeof(buf));
+            strcpy(buf, "(Private) [");
+            strcat(buf, name);
+            strcat(buf, "] ");
+            for (i = strlen(buf); data[tmp] != '\0'; i++)
                 buf[i] = data[tmp++];
-
             buf[i] = '\0';
+            strcat(buf, "\n");
+            
             destSocket = findSocketByName(dest);
-
-            // Todo : find name
+            
             if (destSocket == -1) {
-                logger("[INFO] No member named ");
-                logger(dest);
-                logger("\n");
+                strcpy(private, "[ERROR] No member named ");
+                strcat(private, dest);
+                strcat(private, "\n");
+                write(socket, private, strlen(private));
+                
+                strcpy(buf, "[ERROR] Private message ");
+                strcat(buf, name);
+                strcat(buf, " to ");
+                strcat(buf, dest);
+                strcat(buf, " failed (invalid member name)\n");
+                logger(buf);
             } else {
-                g_print("send private message %s to %s : %s\n", name, dest, buf);
                 write(destSocket, buf, strlen(buf));
-            }
 
+                memset(buf, 0, sizeof(buf));
+                strcpy(buf, "[PRIVATE] Sending private message ");
+                strcat(buf, name);
+                strcat(buf, " to ");
+                strcat(buf, dest);
+                strcat(buf, " succeeded.\n");
+                logger(buf);
+            }
+            pthread_mutex_unlock(&clientMutex);
+            pthread_mutex_unlock(&memberMutex);
         } else if (strcmp(prefix, "global") == 0) {
             buf[0] = '[';
             strcat(buf, name);
             strcat(buf, "] ");
             strcat(buf, data);
             strcat(buf, "\n");
-            sendMsg(buf, strlen(buf));
+            sendGlobalMsg(buf, strlen(buf));
+
             logger(buf);
         }
     }
@@ -348,7 +400,7 @@ void *handleClient(void *arg) {
     return NULL;
 }
 
-void sendMsg(char *msg, int len) {
+void sendGlobalMsg(char *msg, int len) {
     pthread_mutex_lock(&clientMutex);
     for (int i = 0; i < clientCount; i++)
         write(clientSockets[i], msg, len);

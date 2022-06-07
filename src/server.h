@@ -20,7 +20,8 @@ static void portWindow(GtkApplication *, gpointer);
 gint deleteEvent(GtkWidget *, GdkEvent *, gpointer);
 static void getPortText(GtkApplication *, gpointer);
 
-void sendMsg(char *, int);
+void sendGlobalMsg(char *, int);
+void sendPrivateMsg(char *, char*);
 void handleError(char *);
 void logger(char *);
 
