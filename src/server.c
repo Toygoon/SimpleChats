@@ -118,25 +118,25 @@ static void portWindow(GtkApplication *app, gpointer user_data) {
     gtk_widget_show_all(portWin);
 }
 
- /* make sure data is valid UTF8 */
- char *gtkui_utf8_validate(char *data) {
+/* make sure data is valid UTF8 */
+char *gtkui_utf8_validate(char *data) {
     const gchar *end;
     char *unicode = NULL;
-  
+
     unicode = data;
-    if(!g_utf8_validate (data, -1, &end)) {
-       /* if "end" pointer is at beginning of string, we have no valid text to print */
-       if(end == unicode) return(NULL);
-  
-       /* cut off the invalid part so we don't lose the whole string */
-       /* this shouldn't happen often */
-       unicode = (char *)end;
-       *unicode = 0;
-       unicode = data;
+    if (!g_utf8_validate(data, -1, &end)) {
+        /* if "end" pointer is at beginning of string, we have no valid text to print */
+        if (end == unicode) return (NULL);
+
+        /* cut off the invalid part so we don't lose the whole string */
+        /* this shouldn't happen often */
+        unicode = (char *)end;
+        *unicode = 0;
+        unicode = data;
     }
-  
-    return(unicode);
- }
+
+    return (unicode);
+}
 
 void logger(char *msg) {
     GtkTextIter end;
@@ -310,7 +310,7 @@ void *handleClient(void *arg) {
         } else if (strcmp(prefix, "private") == 0) {
             pthread_mutex_lock(&memberMutex);
             pthread_mutex_lock(&clientMutex);
-            
+
             int destSocket;
             char private[BUF_SIZE], dest[NAME_SIZE];
             g_print("%s\n", msg);
@@ -323,7 +323,7 @@ void *handleClient(void *arg) {
             dest[i] = '\0';
 
             tmp++;
-            
+
             memset(buf, 0, sizeof(buf));
             strcpy(buf, "(Private) [");
             strcat(buf, name);
@@ -332,15 +332,15 @@ void *handleClient(void *arg) {
                 buf[i] = data[tmp++];
             buf[i] = '\0';
             strcat(buf, "\n");
-            
+
             destSocket = findSocketByName(dest);
-            
+
             if (destSocket == -1) {
                 strcpy(private, "[ERROR] No member named ");
                 strcat(private, dest);
                 strcat(private, "\n");
                 write(socket, private, strlen(private));
-                
+
                 strcpy(buf, "[ERROR] Private message ");
                 strcat(buf, name);
                 strcat(buf, " to ");

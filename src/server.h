@@ -21,7 +21,6 @@ gint deleteEvent(GtkWidget *, GdkEvent *, gpointer);
 static void getPortText(GtkApplication *, gpointer);
 
 void sendGlobalMsg(char *, int);
-void sendPrivateMsg(char *, char*);
 void handleError(char *);
 void logger(char *);
 

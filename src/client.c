@@ -117,6 +117,8 @@ void sendText(void) {
     if (msg[0] == '@') {
         char *data = createMsg("private", clientName, msg);
         write(clientSocket, data, strlen(data));
+    } else if (msg[0] == '/') {
+        
     } else {
         char *data = createMsg("global", clientName, msg);
         write(clientSocket, data, strlen(data));
