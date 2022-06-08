@@ -188,17 +188,14 @@ void sendRoomRequest(GtkApplication *_app, GtkApplication *entry) {
     gtk_window_close((GtkWindow *)_app);
 }
 
-void sendEnterRoomRequest(GtkApplication *_app, gpointer user_data) {
-    // Todo : sendEnterRoomRequest
-    /*
-    GtkEntryBuffer *entryBuffer = gtk_entry_get_buffer((GtkEntry *)user_data);
+void sendEnterRoomRequest(GtkApplication *_app, GtkApplication *entry) {
+    GtkEntryBuffer *entryBuffer = gtk_entry_get_buffer((GtkEntry *)entry);
     const char *msg = gtk_entry_buffer_get_text(entryBuffer);
 
     char *data = createMsg("enterroom", clientName, msg);
     write(clientSocket, data, strlen(data));
 
     gtk_window_close((GtkWindow *)_app);
-    */
 }
 
 void showRoomListWindow(char *buffer) {

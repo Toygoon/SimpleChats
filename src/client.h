@@ -25,7 +25,7 @@ static void mainWindow(GtkApplication *, gpointer);
 void createRoomRequest(GtkApplication *, gpointer);
 void enterRoomRequest(GtkApplication *, gpointer);
 void sendRoomRequest(GtkApplication *, GtkApplication*);
-void sendEnterRoomRequest(GtkApplication *, gpointer);
+void sendEnterRoomRequest(GtkApplication *, GtkApplication*);
 gint deleteEvent(GtkWidget *, GdkEvent *, gpointer);
 void showRoomListWindow(char *);
 void *connectServer(void *);
