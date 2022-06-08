@@ -239,6 +239,18 @@ void sendRoomList(int socket) {
     g_print(tmp);
     write(socket, tmp, strlen(tmp));
 }
+ 
+void enterRoomRequest(int socket, char* roomName) {
+    char tmp[BUF_SIZE];
+    RoomInfo *ptr = roomLinkedList;
+
+    for (; ptr != NULL; ptr = ptr->next) {
+        if (strcmp(roomName, ptr->name) == 0)
+            break;
+    }
+
+    ptr->memberSocket[ptr->memberCount++] = socket;
+}
 
 static void manageWindow(GtkApplication *app, gpointer user_data) {
     gtk_window_close((GtkWindow*)portWin);
@@ -327,8 +339,9 @@ void *handleClient(void *arg) {
         } else if (strcmp(prefix, "newroom") == 0) {
             createNewRoom(socket, data);
         } else if (strcmp(prefix, "room") == 0) {
+            g_print("%s\n", buf);
         } else if (strcmp(prefix, "enterroom") == 0) {
-            g_print(buf);
+            enterRoomRequest(socket, data);
         } else if (strcmp(prefix, "roominfo") == 0) {
             sendRoomList(socket);
         } else if (strcmp(prefix, "private") == 0) {

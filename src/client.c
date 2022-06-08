@@ -68,23 +68,8 @@ void *receiveData(void *args) {
             for (i = 0; buffer[tmp] != ','; i++)
                 prefix[i] = buffer[tmp++];
             prefix[i] = '\0';
-
-            if (strcmp(prefix, "enterroom") == 0) {
-                tmp += 1;
-                for (i = 0; buffer[tmp] != ','; i++)
-                    numtmp[i] = buffer[tmp++];
-                numtmp[i] = '\0';
-
-                tmp += 1;
-                for (i = 0; buffer[tmp] != '\0'; i++)
-                    nametmp[i] = buffer[tmp++];
-                nametmp[i] = '\0';
-
-                roomNum = atoi(numtmp);
-                sprintf(buffer, "[ROOM] Entered the room : %s\n", nametmp);
-                logTextBuffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(logText));
-                gtk_text_buffer_set_text(logTextBuffer, "", 0);
-            } else if (strcmp(prefix, "roominfo") == 0) {
+            
+            if (strcmp(prefix, "roominfo") == 0) {
                 showRoomListWindow(buffer);
             }
         }
@@ -165,7 +150,9 @@ void sendText(void) {
     } else if (msg[0] == '@') {
         char *data = createMsg("private", clientName, msg);
         write(clientSocket, data, strlen(data));
-    } else if (msg[0] == '/') {
+    } else if (roomEntered) {
+        char *data = createMsg("room", clientName, msg);
+        write(clientSocket, data, strlen(data));
     } else {
         char *data = createMsg("global", clientName, msg);
         write(clientSocket, data, strlen(data));
@@ -190,6 +177,7 @@ void sendEnterRoomRequest(GtkApplication *_app, GtkApplication *entry) {
 
     char *data = createMsg("enterroom", clientName, msg);
     write(clientSocket, data, strlen(data));
+    roomEntered = true;
 
     gtk_window_close((GtkWindow *)_app);
 }
