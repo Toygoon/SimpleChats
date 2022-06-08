@@ -340,6 +340,11 @@ void *handleClient(void *arg) {
         } else if (strcmp(prefix, "newroom") == 0) {
             createNewRoom(socket, data);
         } else if (strcmp(prefix, "room") == 0) {
+        } else if (strcmp(prefix, "roominfo") == 0) {
+            for(RoomInfo* ptr = roomLinkedList; ptr != NULL; ptr = ptr->next) {
+                send(socket, (char *)&roomInfo, sizeof(RoomInfo), 0);
+            }
+        }
         } else if (strcmp(prefix, "private") == 0) {
             pthread_mutex_lock(&memberMutex);
             pthread_mutex_lock(&clientMutex);

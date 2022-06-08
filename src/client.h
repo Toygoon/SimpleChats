@@ -45,4 +45,6 @@ struct sockaddr_in servAddr;
 
 pthread_t connectThread, snd_thread, receiveThread;
 
+struct RoomInfo *roomLinkedList = NULL;
+
 #endif

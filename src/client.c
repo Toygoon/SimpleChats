@@ -229,6 +229,7 @@ void createRoomRequest(GtkApplication *_app, gpointer user_data) {
 void enterRoomRequest(GtkApplication *_app, gpointer user_data) {
     char *data = createMsg("roominfo", clientName, "");
     write(clientSocket, data, strlen(data));
+    recv()
 }
 
 static void mainWindow(GtkApplication *app, gpointer user_data) {
