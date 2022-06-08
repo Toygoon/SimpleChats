@@ -9,8 +9,8 @@
 int main(int argc, char **argv) {
     app = gtk_application_new(NULL, G_APPLICATION_FLAGS_NONE);
 
-    // g_signal_connect(app, "activate", G_CALLBACK(loginWindow), NULL);
-    g_signal_connect(app, "activate", G_CALLBACK(mainWindow), NULL);
+    g_signal_connect(app, "activate", G_CALLBACK(loginWindow), NULL);
+    //g_signal_connect(app, "activate", G_CALLBACK(mainWindow), NULL);
     g_application_run(G_APPLICATION(app), argc, argv);
     g_object_unref(app);
 
@@ -38,19 +38,14 @@ char *gtkui_utf8_validate(char *data) {
 
 static void getLoginData(GtkApplication *_app, gpointer user_data) {
     GtkEntryBuffer *entryBuffer = gtk_entry_get_buffer((GtkEntry *)inputEntries[0]);
-    // serverIP = gtk_entry_buffer_get_text(entryBuffer);
-
-    g_print("ip : %s\n", serverIP);
+    strcpy(serverIP, gtk_entry_buffer_get_text(entryBuffer));
 
     entryBuffer = gtk_entry_get_buffer((GtkEntry *)inputEntries[1]);
     const char *text = gtk_entry_buffer_get_text(entryBuffer);
     portNum = atoi(text);
 
-    g_print("port : %d\n", portNum);
-
     entryBuffer = gtk_entry_get_buffer((GtkEntry *)inputEntries[2]);
-    // clientName = gtk_entry_buffer_get_text(entryBuffer);
-    g_print("name : %s\n", clientName);
+    strcpy(clientName, gtk_entry_buffer_get_text(entryBuffer));
 
     mainWindow(app, NULL);
 }
@@ -66,7 +61,7 @@ void *receiveData(void *args) {
 
         buffer[res] = '\0';
 
-        if (buffer[0] != '[') {
+        if (buffer[0] != '[' && buffer[0] != '(') {
             char prefix[NAME_SIZE], numtmp[NAME_SIZE], nametmp[NAME_SIZE];
 
             int i, tmp = 0;
@@ -175,6 +170,7 @@ void sendText(void) {
         char *data = createMsg("global", clientName, msg);
         write(clientSocket, data, strlen(data));
     }
+
     gtk_entry_set_text((GtkEntry *)inputText, "");
 }
 
@@ -293,7 +289,7 @@ void enterRoomRequest(GtkApplication *_app, gpointer user_data) {
 }
 
 static void mainWindow(GtkApplication *app, gpointer user_data) {
-    // gtk_window_close((GtkWindow*)loginWin);
+    gtk_window_close((GtkWindow*)loginWin);
     GtkWidget *window;
     GtkWidget *sendButton;
     GtkWidget *exitButton;

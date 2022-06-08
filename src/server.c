@@ -9,8 +9,8 @@
 int main(int argc, char **argv) {
     app = gtk_application_new("yu.server.simplechat", G_APPLICATION_FLAGS_NONE);
 
-    // g_signal_connect(app, "activate", G_CALLBACK(portWindow), NULL);
-    g_signal_connect(app, "activate", G_CALLBACK(manageWindow), NULL);
+    g_signal_connect(app, "activate", G_CALLBACK(portWindow), NULL);
+    //g_signal_connect(app, "activate", G_CALLBACK(manageWindow), NULL);
     g_application_run(G_APPLICATION(app), argc, argv);
     g_object_unref(app);
 
@@ -241,7 +241,7 @@ void sendRoomList(int socket) {
 }
 
 static void manageWindow(GtkApplication *app, gpointer user_data) {
-    // gtk_window_close((GtkWindow*)portWin);
+    gtk_window_close((GtkWindow*)portWin);
     GtkWidget *window;
     GtkWidget *shutdownButton;
     GtkWidget *createRoomButton;
@@ -288,7 +288,9 @@ void *handleClient(void *arg) {
     char msg[BUF_SIZE], prefix[NAME_SIZE], name[NAME_SIZE], data[BUF_SIZE];
 
     while ((length = read(socket, msg, sizeof(msg))) != 0) {
+        g_print("%s\n", msg);
         memset(prefix, 0, sizeof(prefix));
+        memset(name, 0, sizeof(name));
         memset(data, 0, sizeof(data));
         msg[length] = '\0';
 
@@ -383,11 +385,7 @@ void *handleClient(void *arg) {
             pthread_mutex_unlock(&clientMutex);
             pthread_mutex_unlock(&memberMutex);
         } else if (strcmp(prefix, "global") == 0) {
-            buf[0] = '[';
-            strcat(buf, name);
-            strcat(buf, "] ");
-            strcat(buf, data);
-            strcat(buf, "\n");
+            sprintf(buf, "[%s] %s\n", name, data);
             sendGlobalMsg(buf, strlen(buf));
 
             logger(buf);

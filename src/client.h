@@ -41,8 +41,8 @@ GtkTextBuffer *logTextBuffer;
 GtkWidget *inputText;
 GtkWidget *inputEntries[3];
 
-char name[NAME_SIZE] = "[DEFAULT]", msg[BUF_SIZE], roomNames[MAX_ROOM][NAME_SIZE];
-char *serverIP = "127.0.0.1", *clientName = "efgh";
+char name[NAME_SIZE] = "[DEFAULT]", msg[BUF_SIZE];
+char serverIP[NAME_SIZE], clientName[NAME_SIZE];
 int clientSocket, rooms = 0, roomNum = -1;
 bool roomEntered = false;
 struct sockaddr_in servAddr;
