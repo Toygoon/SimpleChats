@@ -189,6 +189,7 @@ void sendRoomRequest(GtkApplication *_app, GtkApplication *entry) {
 }
 
 void sendEnterRoomRequest(GtkApplication *_app, gpointer user_data) {
+    /*
     GtkEntryBuffer *entryBuffer = gtk_entry_get_buffer((GtkEntry *)user_data);
     const char *msg = gtk_entry_buffer_get_text(entryBuffer);
 
@@ -196,6 +197,7 @@ void sendEnterRoomRequest(GtkApplication *_app, gpointer user_data) {
     write(clientSocket, data, strlen(data));
 
     gtk_window_close((GtkWindow *)_app);
+    */
 }
 
 void showRoomListWindow(char *buffer) {

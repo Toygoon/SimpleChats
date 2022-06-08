@@ -28,6 +28,7 @@
 typedef struct _MemberInfo {
     int socket;
     char name[NAME_SIZE];
+    bool isDisabled;
     struct MemberInfo* next;
 } MemberInfo;
 

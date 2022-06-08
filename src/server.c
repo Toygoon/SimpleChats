@@ -160,6 +160,9 @@ void showMembers(void) {
     logger("[INFO] Current members : ");
 
     for (MemberInfo *ptr = memberLinkedList; ptr != NULL; ptr = ptr->next) {
+        if (ptr->isDisabled)
+            continue;
+        
         logger(ptr->name);
 
         if (ptr->next != NULL)
@@ -171,6 +174,7 @@ void showMembers(void) {
 void newMember(int socket, char *name) {
     MemberInfo *member = (MemberInfo *)malloc(sizeof(MemberInfo));
     member->socket = socket;
+    member->isDisabled = false;
     strcpy(member->name, name);
 
     if (memberLinkedList == NULL)
@@ -182,33 +186,13 @@ void newMember(int socket, char *name) {
 }
 
 void removeMember(int socket) {
-    MemberInfo *ptr = memberLinkedList, *prev = NULL;
+    for(MemberInfo* ptr = memberLinkedList; ptr != NULL; ptr = ptr->next) {
+        if (ptr->isDisabled)
+            continue;
 
-    if (ptr == NULL) {
-        memberLinkedList = NULL;
-
-        return;
-    } else if (ptr->next == NULL) {
-        free(memberLinkedList);
-        memberLinkedList = NULL;
-
-        return;
-    }
-
-    while (ptr != NULL) {
         if (ptr->socket == socket)
-            break;
-
-        prev = ptr;
-        ptr = ptr->next;
+            ptr->isDisabled = true;
     }
-
-    if (ptr->next == NULL)
-        prev->next = NULL;
-    else
-        prev->next = ptr->next;
-
-    free(ptr);
 }
 
 int findSocketByName(char *name) {
