@@ -189,6 +189,7 @@ void sendRoomRequest(GtkApplication *_app, GtkApplication *entry) {
 }
 
 void sendEnterRoomRequest(GtkApplication *_app, gpointer user_data) {
+    // Todo : sendEnterRoomRequest
     /*
     GtkEntryBuffer *entryBuffer = gtk_entry_get_buffer((GtkEntry *)user_data);
     const char *msg = gtk_entry_buffer_get_text(entryBuffer);
