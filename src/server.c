@@ -235,7 +235,7 @@ int createNewRoom(int socket, char *name) {
     room->next = roomLinkedList;
     roomLinkedList = room;
 
-    g_print("%s\n", tmp);
+    sprintf(tmp, "enterroom,%d,%s", room->id, room->name);
     write(socket, tmp, strlen(tmp));
 
     sprintf(tmp, "[ROOM] Created new room %s\n", room->name);
@@ -247,11 +247,12 @@ void sendRoomList(int socket) {
     strcpy(tmp, "roominfo,");
     for (RoomInfo *ptr = roomLinkedList; ptr != NULL; ptr = ptr->next) {
         strcat(tmp, ptr->name);
-        
+
         if (ptr->next != NULL)
             strcat(tmp, ",");
     }
 
+    g_print(tmp);
     write(socket, tmp, strlen(tmp));
 }
 
@@ -340,11 +341,10 @@ void *handleClient(void *arg) {
         } else if (strcmp(prefix, "newroom") == 0) {
             createNewRoom(socket, data);
         } else if (strcmp(prefix, "room") == 0) {
+        } else if (strcmp(prefix, "enterroom") == 0) {
+            g_print(buf);
         } else if (strcmp(prefix, "roominfo") == 0) {
-            for(RoomInfo* ptr = roomLinkedList; ptr != NULL; ptr = ptr->next) {
-                send(socket, (char *)&roomInfo, sizeof(RoomInfo), 0);
-            }
-        }
+            sendRoomList(socket);
         } else if (strcmp(prefix, "private") == 0) {
             pthread_mutex_lock(&memberMutex);
             pthread_mutex_lock(&clientMutex);

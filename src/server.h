@@ -36,7 +36,7 @@ int findSocketByName(char *);
 int createNewRoom(int, char *);
 void sendRoomList(int);
 
-int clientCount = 0, clientSockets[MAX_CLIENT], clientAddrSz, portNum = 7778, roomId = 0;
+int clientCount = 0, clientSockets[MAX_CLIENT], clientAddrSz, roomId = 0;
 pthread_mutex_t clientMutex, memberMutex;
 
 char buf[BUF_SIZE];

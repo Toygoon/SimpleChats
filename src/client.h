@@ -24,7 +24,10 @@ static void loginWindow(GtkApplication *, gpointer);
 static void mainWindow(GtkApplication *, gpointer);
 void createRoomRequest(GtkApplication *, gpointer);
 void enterRoomRequest(GtkApplication *, gpointer);
+void sendRoomRequest(GtkApplication *, GtkApplication*);
+void sendEnterRoomRequest(GtkApplication *, gpointer);
 gint deleteEvent(GtkWidget *, GdkEvent *, gpointer);
+void showRoomListWindow(char *);
 void *connectServer(void *);
 void getRoomList(void);
 void logger(char *);
@@ -38,9 +41,10 @@ GtkTextBuffer *logTextBuffer;
 GtkWidget *inputText;
 GtkWidget *inputEntries[3];
 
-char name[NAME_SIZE] = "[DEFAULT]", msg[BUF_SIZE];
+char name[NAME_SIZE] = "[DEFAULT]", msg[BUF_SIZE], roomNames[MAX_ROOM][NAME_SIZE];
 char *serverIP = "127.0.0.1", *clientName = "efgh";
-int portNum = 7778, clientSocket, roomNum = -1;
+int clientSocket, rooms = 0, roomNum = -1;
+bool roomEntered = false;
 struct sockaddr_in servAddr;
 
 pthread_t connectThread, snd_thread, receiveThread;

@@ -39,4 +39,6 @@ typedef struct _RoomInfo {
     struct RoomInfo* next;
 } RoomInfo;
 
+int portNum = 7777;
+
 #endif
