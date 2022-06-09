@@ -175,6 +175,7 @@ void newMember(int socket, char *name) {
     MemberInfo *member = (MemberInfo *)malloc(sizeof(MemberInfo));
     member->socket = socket;
     member->isDisabled = false;
+    member->enteredRoom = false;
     strcpy(member->name, name);
 
     if (memberLinkedList == NULL)
@@ -208,18 +209,27 @@ int findSocketByName(char *name) {
     return res;
 }
 
+MemberInfo* findMemberBySocket(int socket) {
+    for (MemberInfo *ptr = memberLinkedList; ptr != NULL; ptr = ptr->next)
+        if (socket == ptr->socket) {
+            return ptr;
+        }
+
+    return NULL;
+}
+
 int createNewRoom(int socket, char *name) {
     char tmp[BUF_SIZE];
     RoomInfo *room = (RoomInfo *)malloc(sizeof(RoomInfo));
+    MemberInfo *target = findMemberBySocket(socket);
 
     room->id = roomId++;
     strcpy(room->name, name);
-    room->memberCount = 1;
-    room->memberSocket[room->memberCount - 1] = socket;
     room->next = roomLinkedList;
     roomLinkedList = room;
 
     sprintf(tmp, "enterroom,%d,%s", room->id, room->name);
+    target->enteredRoom = true;
     write(socket, tmp, strlen(tmp));
 
     sprintf(tmp, "[ROOM] Created new room %s\n", room->name);
@@ -247,9 +257,22 @@ void enterRoomRequest(int socket, char* roomName) {
     for (; ptr != NULL; ptr = ptr->next) {
         if (strcmp(roomName, ptr->name) == 0)
             break;
+
+        if (ptr->next == NULL)
+            return;
     }
 
-    ptr->memberSocket[ptr->memberCount++] = socket;
+    SocketInfo *socketInfo = (SocketInfo*)malloc(sizeof(SocketInfo)), *bak;
+
+    socketInfo->socket = socket;
+    socketInfo->next = NULL;
+    socketInfo->isDisabled = false;
+
+    bak = ptr->roomSocketList;
+    socketInfo->next = bak;
+    ptr->roomSocketList = socketInfo;
+
+    bak = roomLinkedList;
 }
 
 static void manageWindow(GtkApplication *app, gpointer user_data) {
@@ -435,7 +458,12 @@ void *handleClient(void *arg) {
 
 void sendGlobalMsg(char *msg, int len) {
     pthread_mutex_lock(&clientMutex);
-    for (int i = 0; i < clientCount; i++)
+    for (int i = 0; i < clientCount; i++) {
+        MemberInfo *member = findMemberBySocket(socket);
+        if (member != NULL && member->enteredRoom)
+            continue;
+
         write(clientSockets[i], msg, len);
+    }
     pthread_mutex_unlock(&clientMutex);
 }

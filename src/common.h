@@ -29,14 +29,20 @@ typedef struct _MemberInfo {
     int socket;
     char name[NAME_SIZE];
     bool isDisabled;
+    bool enteredRoom;
     struct MemberInfo* next;
 } MemberInfo;
+
+typedef struct _SocketInfo {
+    int socket;
+    bool isDisabled;
+    struct SocketInfo* next;
+} SocketInfo;
 
 typedef struct _RoomInfo {
     int id;
     char name[NAME_SIZE];
-    int memberCount;
-    int memberSocket[MAX_CLIENT];
+    struct SocketInfo* roomSocketList;
     struct RoomInfo* next;
 } RoomInfo;
 

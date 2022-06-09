@@ -62,7 +62,7 @@ void *receiveData(void *args) {
         buffer[res] = '\0';
 
         if (buffer[0] != '[' && buffer[0] != '(') {
-            char prefix[NAME_SIZE], numtmp[NAME_SIZE], nametmp[NAME_SIZE];
+            char prefix[NAME_SIZE], nametmp[NAME_SIZE];
 
             int i, tmp = 0;
             for (i = 0; buffer[tmp] != ','; i++)
@@ -71,10 +71,19 @@ void *receiveData(void *args) {
             
             if (strcmp(prefix, "roominfo") == 0) {
                 showRoomListWindow(buffer);
-            }
-        }
+            } else if (strcmp(prefix, "enterroom") == 0) {
+                for (i = 0; buffer[tmp] != ','; i++)
+                    tmp++;
+                tmp++;
+                for (i = 0; buffer[tmp] != '\0'; i++)
+                    nametmp[i] = buffer[tmp++];
 
-        logger(buffer);
+                sprintf(buffer, "[ROOM] Entered room : %s\n", nametmp);
+            }
+
+            
+        }
+    logger(buffer);
     }
 
     return NULL;
