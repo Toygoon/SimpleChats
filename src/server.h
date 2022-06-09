@@ -20,6 +20,7 @@ void *startServer(void *);
 static void getPortText(GtkApplication *, gpointer);
 static void portWindow(GtkApplication *, gpointer);
 void logger(char *);
+void clearLogger(void);
 void showMembers(void);
 void newMember(int, char *);
 void removeMember(int);
@@ -31,10 +32,11 @@ void enterRoomRequest(int, char *);
 static void manageWindow(GtkApplication *, gpointer);
 void *handleClient(void *);
 void sendGlobalMsg(char *, int);
+void sendRoomMsg(int, char *);
 char *gtkui_utf8_validate(char *);
 
-int clientCount = 0, clientSockets[MAX_CLIENT], clientAddrSz, roomId = 0;
-pthread_mutex_t clientMutex, memberMutex;
+int clientCount = 0, clientSockets[MAX_CLIENT], clientAddrSz;
+pthread_mutex_t clientMutex, memberMutex, roomMutex;
 
 char buf[BUF_SIZE];
 int serverSocket;

@@ -43,7 +43,7 @@ GtkWidget *inputEntries[3];
 
 char name[NAME_SIZE] = "[DEFAULT]", msg[BUF_SIZE];
 char serverIP[NAME_SIZE], clientName[NAME_SIZE];
-int clientSocket, rooms = 0, roomNum = -1;
+int clientSocket;
 bool roomEntered = false;
 struct sockaddr_in servAddr;
 

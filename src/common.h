@@ -40,7 +40,6 @@ typedef struct _SocketInfo {
 } SocketInfo;
 
 typedef struct _RoomInfo {
-    int id;
     char name[NAME_SIZE];
     struct SocketInfo* roomSocketList;
     struct RoomInfo* next;

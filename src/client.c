@@ -35,7 +35,7 @@ void *receiveData(void *args) {
     char buffer[NAME_SIZE + BUF_SIZE];
     int res;
 
-    while (1) {
+    while (true) {
         res = read(clientSocket, buffer, NAME_SIZE + BUF_SIZE - 1);
         if (res == -1)
             return (void *)-1;
@@ -60,9 +60,14 @@ void *receiveData(void *args) {
                     nametmp[i] = buffer[tmp++];
 
                 sprintf(buffer, "[ROOM] Entered room : %s\n", nametmp);
+                clearLogger();
+            } else if (strcmp(prefix, "room") == 0) {
+                logger(buffer);
             }
+        } else {
+            logger(buffer);
         }
-        logger(buffer);
+        
     }
 
     return NULL;
@@ -117,6 +122,11 @@ void logger(char *msg) {
     gtk_text_view_scroll_to_iter(GTK_TEXT_VIEW(logText), &end, 0, false, 1.0, 0);
 }
 
+void clearLogger(void) {
+    logTextBuffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(logText));
+    gtk_text_buffer_set_text(logTextBuffer, "", 0);
+}
+
 gboolean closeRequest(GtkWindow *window, gpointer user_data) {
     char buffer[BUF_SIZE];
 
@@ -141,7 +151,6 @@ void sendText(void) {
     } else if (roomEntered) {
         char *data = createMsg("room", clientName, msg);
         write(clientSocket, data, strlen(data));
-        g_print("%s\n", data);
     } else {
         char *data = createMsg("global", clientName, msg);
         write(clientSocket, data, strlen(data));
