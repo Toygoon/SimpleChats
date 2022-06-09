@@ -20,19 +20,20 @@
 
 char *gtkui_utf8_validate(char *);
 
-static void loginWindow(GtkApplication *, gpointer);
-static void mainWindow(GtkApplication *, gpointer);
+static void getLoginData(GtkApplication *, gpointer);
+void *receiveData(void *);
+char *createMsg(char *, char *, char *);
+void *connectServer(void *);
+void logger(char *);
+gboolean closeRequest(GtkWindow *, gpointer);
+void sendText(void);
+void sendRoomRequest(GtkApplication *, GtkApplication *);
+void sendEnterRoomRequest(GtkApplication *, GtkApplication *);
+void showRoomListWindow(char *);
 void createRoomRequest(GtkApplication *, gpointer);
 void enterRoomRequest(GtkApplication *, gpointer);
-void sendRoomRequest(GtkApplication *, GtkApplication*);
-void sendEnterRoomRequest(GtkApplication *, GtkApplication*);
-gint deleteEvent(GtkWidget *, GdkEvent *, gpointer);
-void showRoomListWindow(char *);
-void *connectServer(void *);
-void getRoomList(void);
-void logger(char *);
-void sendText(void);
-void *receiveData(void *);
+static void mainWindow(GtkApplication *, gpointer);
+static void loginWindow(GtkApplication *, gpointer);
 
 GtkApplication *app;
 GtkWidget *loginWin;

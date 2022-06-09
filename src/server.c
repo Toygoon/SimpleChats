@@ -10,30 +10,11 @@ int main(int argc, char **argv) {
     app = gtk_application_new("yu.server.simplechat", G_APPLICATION_FLAGS_NONE);
 
     g_signal_connect(app, "activate", G_CALLBACK(portWindow), NULL);
-    //g_signal_connect(app, "activate", G_CALLBACK(manageWindow), NULL);
+    // g_signal_connect(app, "activate", G_CALLBACK(manageWindow), NULL);
     g_application_run(G_APPLICATION(app), argc, argv);
     g_object_unref(app);
 
     return 0;
-}
-
-char *gtkui_utf8_validate(char *data) {
-    const gchar *end;
-    char *unicode = NULL;
-
-    unicode = data;
-    if (!g_utf8_validate(data, -1, &end)) {
-        /* if "end" pointer is at beginning of string, we have no valid text to print */
-        if (end == unicode) return (NULL);
-
-        /* cut off the invalid part so we don't lose the whole string */
-        /* this shouldn't happen often */
-        unicode = (char *)end;
-        *unicode = 0;
-        unicode = data;
-    }
-
-    return (unicode);
 }
 
 gboolean closeRequest(GtkWindow *window, gpointer user_data) {
@@ -116,6 +97,7 @@ static void portWindow(GtkApplication *app, gpointer user_data) {
     portInputLabel = gtk_label_new("Port Number : ");
     portInputEntry = gtk_entry_new();
     gtk_entry_set_placeholder_text(GTK_ENTRY(portInputEntry), "Port");
+    gtk_entry_set_text(GTK_ENTRY(portInputEntry), "7777");
 
     guint margin = 5;
     grid = gtk_grid_new();
@@ -162,7 +144,7 @@ void showMembers(void) {
     for (MemberInfo *ptr = memberLinkedList; ptr != NULL; ptr = ptr->next) {
         if (ptr->isDisabled)
             continue;
-        
+
         logger(ptr->name);
 
         if (ptr->next != NULL)
@@ -187,7 +169,7 @@ void newMember(int socket, char *name) {
 }
 
 void removeMember(int socket) {
-    for(MemberInfo* ptr = memberLinkedList; ptr != NULL; ptr = ptr->next) {
+    for (MemberInfo *ptr = memberLinkedList; ptr != NULL; ptr = ptr->next) {
         if (ptr->isDisabled)
             continue;
 
@@ -209,7 +191,7 @@ int findSocketByName(char *name) {
     return res;
 }
 
-MemberInfo* findMemberBySocket(int socket) {
+MemberInfo *findMemberBySocket(int socket) {
     for (MemberInfo *ptr = memberLinkedList; ptr != NULL; ptr = ptr->next)
         if (socket == ptr->socket) {
             return ptr;
@@ -249,8 +231,8 @@ void sendRoomList(int socket) {
     g_print(tmp);
     write(socket, tmp, strlen(tmp));
 }
- 
-void enterRoomRequest(int socket, char* roomName) {
+
+void enterRoomRequest(int socket, char *roomName) {
     char tmp[BUF_SIZE];
     RoomInfo *ptr = roomLinkedList;
 
@@ -262,7 +244,7 @@ void enterRoomRequest(int socket, char* roomName) {
             return;
     }
 
-    SocketInfo *socketInfo = (SocketInfo*)malloc(sizeof(SocketInfo)), *bak;
+    SocketInfo *socketInfo = (SocketInfo *)malloc(sizeof(SocketInfo)), *bak;
 
     socketInfo->socket = socket;
     socketInfo->next = NULL;
@@ -276,7 +258,7 @@ void enterRoomRequest(int socket, char* roomName) {
 }
 
 static void manageWindow(GtkApplication *app, gpointer user_data) {
-    gtk_window_close((GtkWindow*)portWin);
+    gtk_window_close((GtkWindow *)portWin);
     GtkWidget *window;
     GtkWidget *shutdownButton;
     GtkWidget *createRoomButton;
@@ -362,7 +344,7 @@ void *handleClient(void *arg) {
         } else if (strcmp(prefix, "newroom") == 0) {
             createNewRoom(socket, data);
         } else if (strcmp(prefix, "room") == 0) {
-            g_print("%s\n", buf);
+            g_print("%s\n", data);
         } else if (strcmp(prefix, "enterroom") == 0) {
             enterRoomRequest(socket, data);
         } else if (strcmp(prefix, "roominfo") == 0) {
