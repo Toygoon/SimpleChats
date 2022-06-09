@@ -18,8 +18,6 @@
 #define ROOM_WIN_WIDTH 200
 #define ROOM_WIN_HEIGHT 50
 
-char *gtkui_utf8_validate(char *);
-
 static void getLoginData(GtkApplication *, gpointer);
 void *receiveData(void *);
 char *createMsg(char *, char *, char *);
@@ -34,6 +32,7 @@ void createRoomRequest(GtkApplication *, gpointer);
 void enterRoomRequest(GtkApplication *, gpointer);
 static void mainWindow(GtkApplication *, gpointer);
 static void loginWindow(GtkApplication *, gpointer);
+char *gtkui_utf8_validate(char *);
 
 GtkApplication *app;
 GtkWidget *loginWin;

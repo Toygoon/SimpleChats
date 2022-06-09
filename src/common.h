@@ -48,6 +48,4 @@ typedef struct _RoomInfo {
 
 int portNum = 7777;
 
-char* gtkui_utf8_validate(char*);
-
 #endif

@@ -31,6 +31,7 @@ void enterRoomRequest(int, char *);
 static void manageWindow(GtkApplication *, gpointer);
 void *handleClient(void *);
 void sendGlobalMsg(char *, int);
+char *gtkui_utf8_validate(char *);
 
 int clientCount = 0, clientSockets[MAX_CLIENT], clientAddrSz, roomId = 0;
 pthread_mutex_t clientMutex, memberMutex;

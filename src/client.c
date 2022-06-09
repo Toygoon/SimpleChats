@@ -338,13 +338,17 @@ static void loginWindow(GtkApplication *app, gpointer user_data) {
     inputLabels[0] = gtk_label_new("IP : ");
     inputEntries[0] = gtk_entry_new();
     gtk_entry_set_placeholder_text(GTK_ENTRY(inputEntries[0]), "127.0.0.1");
+    gtk_entry_set_text(GTK_ENTRY(inputEntries[0]), "127.0.0.1");
 
     inputLabels[1] = gtk_label_new("Port : ");
     inputEntries[1] = gtk_entry_new();
     gtk_entry_set_placeholder_text(GTK_ENTRY(inputEntries[1]), "7777");
+    gtk_entry_set_text(GTK_ENTRY(inputEntries[1]), "7777");
 
     inputLabels[2] = gtk_label_new("Name : ");
     inputEntries[2] = gtk_entry_new();
+    gtk_entry_set_placeholder_text(GTK_ENTRY(inputEntries[2]), "Name");
+    gtk_entry_set_text(GTK_ENTRY(inputEntries[2]), "Name");
 
     guint margin = 5;
     grid = gtk_grid_new();
@@ -368,4 +372,23 @@ static void loginWindow(GtkApplication *app, gpointer user_data) {
     gtk_grid_attach(GTK_GRID(grid), button, 0, 3, 3, 1);
 
     gtk_widget_show_all(loginWin);
+}
+
+char *gtkui_utf8_validate(char *data) {
+    const gchar *end;
+    char *unicode = NULL;
+
+    unicode = data;
+    if (!g_utf8_validate(data, -1, &end)) {
+        /* if "end" pointer is at beginning of string, we have no valid text to print */
+        if (end == unicode) return (NULL);
+
+        /* cut off the invalid part so we don't lose the whole string */
+        /* this shouldn't happen often */
+        unicode = (char *)end;
+        *unicode = 0;
+        unicode = data;
+    }
+
+    return (unicode);
 }
