@@ -207,6 +207,7 @@ int createNewRoom(int socket, char *name) {
     roomLinkedList = room;
 
     sprintf(tmp, "enterroom,%d,%s", 1, room->name);
+    g_print("%s\n", tmp);
     target->enteredRoom = true;
     write(socket, tmp, strlen(tmp));
 
@@ -224,6 +225,8 @@ void sendRoomList(int socket) {
         if (ptr->next != NULL)
             strcat(tmp, ",");
     }
+
+    g_print("%s\n", tmp);
 
     write(socket, tmp, strlen(tmp));
     pthread_mutex_unlock(&roomMutex);
@@ -308,6 +311,7 @@ void *handleClient(void *arg) {
         memset(name, 0, sizeof(name));
         memset(data, 0, sizeof(data));
         msg[length] = '\0';
+        g_print("%s\n", msg);
 
         int tmp = 0, i;
 
@@ -447,6 +451,9 @@ void sendRoomMsg(int socket, char *msg) {
         if (found)
             break;
     }
+
+    if (found == false)
+        return;
 
     for (SocketInfo *s = ptr->roomSocketList; s != NULL; s = s->next) {
         if (s->socket != socket && s->isDisabled == false) {

@@ -52,6 +52,7 @@ void *receiveData(void *args) {
 
             if (strcmp(prefix, "roominfo") == 0) {
                 showRoomListWindow(buffer);
+                g_print("%s\n", buffer);
             } else if (strcmp(prefix, "enterroom") == 0) {
                 for (i = 0; buffer[tmp] != ','; i++)
                     tmp++;
@@ -61,6 +62,7 @@ void *receiveData(void *args) {
 
                 sprintf(buffer, "[ROOM] Entered room : %s\n", nametmp);
                 clearLogger();
+                logger(buffer);
             } else if (strcmp(prefix, "room") == 0) {
                 logger(buffer);
             }
