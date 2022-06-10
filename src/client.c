@@ -57,8 +57,10 @@ void *receiveData(void *args) {
                 for (i = 0; buffer[tmp] != ','; i++)
                     tmp++;
                 tmp++;
+                
                 for (i = 0; buffer[tmp] != '\0'; i++)
                     nametmp[i] = buffer[tmp++];
+                nametmp[i] = '\0';
 
                 sprintf(buffer, "[ROOM] Entered room : %s\n", nametmp);
                 clearLogger();

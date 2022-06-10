@@ -27,7 +27,6 @@ gboolean closeRequest(GtkWindow *window, gpointer user_data) {
 void *startServer(void *arg) {
     pthread_mutex_init(&clientMutex, NULL);
     pthread_mutex_init(&memberMutex, NULL);
-    pthread_mutex_init(&roomMutex, NULL);
     logger("[INFO] Initiating server socket.\n");
     serverSocket = socket(PF_INET, SOCK_STREAM, 0);
 
@@ -201,10 +200,15 @@ int createNewRoom(int socket, char *name) {
     char tmp[BUF_SIZE];
     RoomInfo *room = (RoomInfo *)malloc(sizeof(RoomInfo));
     MemberInfo *target = findMemberBySocket(socket);
+    SocketInfo *socketInfo = (SocketInfo *)malloc(sizeof(SocketInfo));
 
     strcpy(room->name, name);
     room->next = roomLinkedList;
     roomLinkedList = room;
+    socketInfo->isDisabled = false;
+    socketInfo->socket = socket;
+    socketInfo->next = NULL;
+    room->roomSocketList = socketInfo;
 
     sprintf(tmp, "enterroom,%d,%s", 1, room->name);
     g_print("%s\n", tmp);
@@ -216,7 +220,6 @@ int createNewRoom(int socket, char *name) {
 }
 
 void sendRoomList(int socket) {
-    pthread_mutex_lock(&roomMutex);
     char tmp[BUF_SIZE];
     strcpy(tmp, "roominfo,");
     for (RoomInfo *ptr = roomLinkedList; ptr != NULL; ptr = ptr->next) {
@@ -229,11 +232,9 @@ void sendRoomList(int socket) {
     g_print("%s\n", tmp);
 
     write(socket, tmp, strlen(tmp));
-    pthread_mutex_unlock(&roomMutex);
 }
 
 void enterRoomRequest(int socket, char *roomName) {
-    pthread_mutex_lock(&roomMutex);
     char tmp[BUF_SIZE];
     RoomInfo *ptr = roomLinkedList;
 
@@ -248,7 +249,6 @@ void enterRoomRequest(int socket, char *roomName) {
     SocketInfo *socketInfo = (SocketInfo *)malloc(sizeof(SocketInfo)), *bak;
 
     socketInfo->socket = socket;
-    socketInfo->next = NULL;
     socketInfo->isDisabled = false;
 
     bak = ptr->roomSocketList;
@@ -256,7 +256,6 @@ void enterRoomRequest(int socket, char *roomName) {
     ptr->roomSocketList = socketInfo;
 
     bak = roomLinkedList;
-    pthread_mutex_unlock(&roomMutex);
 }
 
 static void manageWindow(GtkApplication *app, gpointer user_data) {
@@ -344,7 +343,11 @@ void *handleClient(void *arg) {
         } else if (strcmp(prefix, "newroom") == 0) {
             createNewRoom(socket, data);
         } else if (strcmp(prefix, "room") == 0) {
-            sendRoomMsg(socket, data);
+            //sendRoomMsg(socket, data);
+            sprintf(buf, "[%s] %s\n", name, data);
+            sendGlobalMsg(buf, strlen(buf));
+
+            logger(buf);
         } else if (strcmp(prefix, "enterroom") == 0) {
             enterRoomRequest(socket, data);
         } else if (strcmp(prefix, "roominfo") == 0) {
@@ -426,27 +429,24 @@ void *handleClient(void *arg) {
 void sendGlobalMsg(char *msg, int len) {
     pthread_mutex_lock(&clientMutex);
     for (int i = 0; i < clientCount; i++) {
+        /*
         MemberInfo *member = findMemberBySocket(clientSockets[i]);
         if (member->enteredRoom)
             continue;
-
+        */
         write(clientSockets[i], msg, len);
     }
     pthread_mutex_unlock(&clientMutex);
 }
 
 void sendRoomMsg(int socket, char *msg) {
-    pthread_mutex_lock(&roomMutex);
     bool found = false;
     RoomInfo *ptr;
 
     for (ptr = roomLinkedList; ptr != NULL; ptr = ptr->next) {
-        for (SocketInfo *s = ptr->roomSocketList; s != NULL; s = s->next) {
-            if (s->socket == socket) {
+        for(SocketInfo *s = ptr->roomSocketList; s != NULL; s = s->next)
+            if (s->socket == socket)
                 found = true;
-                break;
-            }
-        }
 
         if (found)
             break;
@@ -460,7 +460,6 @@ void sendRoomMsg(int socket, char *msg) {
             write(s->socket, msg, strlen(msg));
         }
     }
-    pthread_mutex_unlock(&roomMutex);
 }
 
 char *gtkui_utf8_validate(char *data) {
