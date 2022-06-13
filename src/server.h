@@ -34,6 +34,7 @@ void *handleClient(void *);
 void sendGlobalMsg(char *, int);
 void sendRoomMsg(int, char *);
 char *gtkui_utf8_validate(char *);
+static gboolean buttonPressed(GtkWidget *, GdkEventKey *, gpointer);
 
 int clientCount = 0, clientSockets[MAX_CLIENT], clientAddrSz;
 pthread_mutex_t clientMutex, memberMutex, loggerMutex;

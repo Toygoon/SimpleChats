@@ -11,7 +11,6 @@ int main(int argc, char **argv) {
 
     pthread_mutex_init(&loggerMutex, NULL);
     g_signal_connect(app, "activate", G_CALLBACK(portWindow), NULL);
-    // g_signal_connect(app, "activate", G_CALLBACK(manageWindow), NULL);
     g_application_run(G_APPLICATION(app), argc, argv);
     g_object_unref(app);
 
@@ -108,6 +107,7 @@ static void portWindow(GtkApplication *app, gpointer user_data) {
 
     button = gtk_button_new_with_label("OK");
     g_signal_connect(button, "clicked", G_CALLBACK(getPortText), portWin);
+    g_signal_connect(GTK_WINDOW(portWin), "key_press_event", G_CALLBACK(buttonPressed), NULL);
 
     gtk_grid_attach(GTK_GRID(grid), portInputLabel, 0, 0, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), portInputEntry, 1, 0, 2, 1);
@@ -128,7 +128,7 @@ void logger(char *msg) {
     textBuffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(logText));
     gtk_text_buffer_get_end_iter(textBuffer, &end);
     gtk_text_buffer_insert(textBuffer, &end, unicode, -1);
-    
+
     pthread_mutex_unlock(&loggerMutex);
 }
 
@@ -483,4 +483,15 @@ char *gtkui_utf8_validate(char *data) {
     }
 
     return (unicode);
+}
+
+static gboolean buttonPressed(GtkWidget *widget, GdkEventKey *event, gpointer data) {
+    if (event->keyval == GDK_KEY_Return) {
+        if (strcmp(gtk_window_get_title(widget), "Port") == 0) {
+            getPortText((GtkWindow *)portWin, NULL);
+            return true;
+        }
+    }
+
+    return false;
 }
