@@ -36,7 +36,7 @@ void sendRoomMsg(int, char *);
 char *gtkui_utf8_validate(char *);
 
 int clientCount = 0, clientSockets[MAX_CLIENT], clientAddrSz;
-pthread_mutex_t clientMutex, memberMutex;
+pthread_mutex_t clientMutex, memberMutex, loggerMutex;
 
 char buf[BUF_SIZE];
 int serverSocket;

@@ -9,6 +9,7 @@
 int main(int argc, char **argv) {
     app = gtk_application_new("yu.server.simplechat", G_APPLICATION_FLAGS_NONE);
 
+    pthread_mutex_init(&loggerMutex, NULL);
     g_signal_connect(app, "activate", G_CALLBACK(portWindow), NULL);
     // g_signal_connect(app, "activate", G_CALLBACK(manageWindow), NULL);
     g_application_run(G_APPLICATION(app), argc, argv);
@@ -116,6 +117,8 @@ static void portWindow(GtkApplication *app, gpointer user_data) {
 }
 
 void logger(char *msg) {
+    pthread_mutex_lock(&loggerMutex);
+    
     GtkTextIter end;
     gchar *unicode;
 
@@ -125,7 +128,8 @@ void logger(char *msg) {
     textBuffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(logText));
     gtk_text_buffer_get_end_iter(textBuffer, &end);
     gtk_text_buffer_insert(textBuffer, &end, unicode, -1);
-    gtk_text_view_scroll_to_iter(GTK_TEXT_VIEW(logText), &end, 0, false, 1.0, 0);
+    
+    pthread_mutex_unlock(&loggerMutex);
 }
 
 void showMembers(void) {
@@ -343,7 +347,7 @@ void *handleClient(void *arg) {
         } else if (strcmp(prefix, "newroom") == 0) {
             createNewRoom(socket, data);
         } else if (strcmp(prefix, "room") == 0) {
-            //sendRoomMsg(socket, data);
+            // sendRoomMsg(socket, data);
             sprintf(buf, "[%s] %s\n", name, data);
             sendGlobalMsg(buf, strlen(buf));
 
@@ -444,7 +448,7 @@ void sendRoomMsg(int socket, char *msg) {
     RoomInfo *ptr;
 
     for (ptr = roomLinkedList; ptr != NULL; ptr = ptr->next) {
-        for(SocketInfo *s = ptr->roomSocketList; s != NULL; s = s->next)
+        for (SocketInfo *s = ptr->roomSocketList; s != NULL; s = s->next)
             if (s->socket == socket)
                 found = true;
 

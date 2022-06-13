@@ -9,6 +9,7 @@
 int main(int argc, char **argv) {
     app = gtk_application_new(NULL, G_APPLICATION_FLAGS_NONE);
 
+    pthread_mutex_init(&loggerMutex, NULL);
     g_signal_connect(app, "activate", G_CALLBACK(loginWindow), NULL);
     // g_signal_connect(app, "activate", G_CALLBACK(mainWindow), NULL);
     g_application_run(G_APPLICATION(app), argc, argv);
@@ -57,7 +58,7 @@ void *receiveData(void *args) {
                 for (i = 0; buffer[tmp] != ','; i++)
                     tmp++;
                 tmp++;
-                
+
                 for (i = 0; buffer[tmp] != '\0'; i++)
                     nametmp[i] = buffer[tmp++];
                 nametmp[i] = '\0';
@@ -71,7 +72,6 @@ void *receiveData(void *args) {
         } else {
             logger(buffer);
         }
-        
     }
 
     return NULL;
@@ -112,6 +112,8 @@ void *connectServer(void *args) {
 }
 
 void logger(char *msg) {
+    pthread_mutex_lock(&loggerMutex);
+    
     GtkTextIter end;
     gchar *unicode;
 
@@ -123,7 +125,8 @@ void logger(char *msg) {
     logTextBuffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(logText));
     gtk_text_buffer_get_end_iter(logTextBuffer, &end);
     gtk_text_buffer_insert(logTextBuffer, &end, unicode, -1);
-    gtk_text_view_scroll_to_iter(GTK_TEXT_VIEW(logText), &end, 0, false, 1.0, 0);
+
+    pthread_mutex_unlock(&loggerMutex);
 }
 
 void clearLogger(void) {
