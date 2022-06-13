@@ -164,6 +164,7 @@ void sendText(void) {
     }
 
     gtk_entry_set_text((GtkEntry *)inputText, "");
+    gtk_entry_grab_focus_without_selecting(GTK_ENTRY(inputText));
 }
 
 void sendRoomRequest(GtkApplication *_app, GtkApplication *entry) {
@@ -282,6 +283,20 @@ void enterRoomRequest(GtkApplication *_app, gpointer user_data) {
     write(clientSocket, data, strlen(data));
 }
 
+static gboolean buttonPressed(GtkWidget *widget, GdkEventKey *event, gpointer data) {
+    if (event->keyval == GDK_KEY_Return) {
+        if (strcmp(gtk_window_get_title(widget), "Login") == 0) {
+            getLoginData((GtkWindow *)loginWin, NULL);
+            return true;
+        }
+
+        sendText();
+        return true;
+    }
+
+    return false;
+}
+
 static void mainWindow(GtkApplication *app, gpointer user_data) {
     gtk_window_close((GtkWindow *)loginWin);
     GtkWidget *window;
@@ -314,6 +329,7 @@ static void mainWindow(GtkApplication *app, gpointer user_data) {
 
     sendButton = gtk_button_new_with_label("Send");
     g_signal_connect(sendButton, "clicked", G_CALLBACK(sendText), NULL);
+    g_signal_connect(GTK_WINDOW(window), "key_press_event", G_CALLBACK(buttonPressed), NULL);
 
     exitButton = gtk_button_new_with_label("Exit");
     g_signal_connect(exitButton, "clicked", G_CALLBACK(closeRequest), NULL);
@@ -350,6 +366,7 @@ static void loginWindow(GtkApplication *app, gpointer user_data) {
     loginWin = gtk_application_window_new(app);
     gtk_window_set_title(GTK_WINDOW(loginWin), "Login");
     gtk_window_set_default_size(GTK_WINDOW(loginWin), LOGIN_WIN_WIDTH, LOGIN_WIN_HEIGHT);
+    g_signal_connect(GTK_WINDOW(loginWin), "key_press_event", G_CALLBACK(buttonPressed), NULL);
 
     inputLabels[0] = gtk_label_new("IP : ");
     inputEntries[0] = gtk_entry_new();

@@ -14,6 +14,8 @@
 #define NAME_SIZE 20
 
 #include <arpa/inet.h>
+#include <gdk/gdk.h>
+#include <gdk/gdkkeysyms.h>
 #include <gtk/gtk.h>
 #include <netinet/in.h>
 #include <pthread.h>

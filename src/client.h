@@ -30,6 +30,7 @@ void sendEnterRoomRequest(GtkApplication *, GtkApplication *);
 void showRoomListWindow(char *);
 void createRoomRequest(GtkApplication *, gpointer);
 void enterRoomRequest(GtkApplication *, gpointer);
+static gboolean buttonPressed(GtkWidget *, GdkEventKey *, gpointer);
 static void mainWindow(GtkApplication *, gpointer);
 static void loginWindow(GtkApplication *, gpointer);
 char *gtkui_utf8_validate(char *);
