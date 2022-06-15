@@ -21,7 +21,7 @@ int main(int argc, char **argv) {
     return 0;
 }
 
-/* closeRequest : Shutdown 버튼, 혹은 창을 닫는 버튼을 눌렀을 때 호출됨 */
+/* closeRequest() : Shutdown 버튼, 혹은 창을 닫는 버튼을 눌렀을 때 호출됨 */
 gboolean closeRequest(GtkWindow *window, gpointer user_data) {
     // 서버 소켓 닫음
     close(serverSocket);
@@ -30,7 +30,7 @@ gboolean closeRequest(GtkWindow *window, gpointer user_data) {
     return false;
 }
 
-/* startServer : 서버 시작, Client로부터 요청을 받음 */
+/* startServer() : 서버 시작, Client로부터 요청을 받음 */
 void *startServer(void *arg) {
     // Client 소켓을 저장하는 Mutex 초기화
     pthread_mutex_init(&clientMutex, NULL);
@@ -43,9 +43,9 @@ void *startServer(void *arg) {
 
     logger("[INFO] Generating socket address struct.\n");
     // sockaddr_in 구조체를 0으로 채움 (sockaddr로 구조체로 캐스팅하기 위함,
-    // 이는 각 구조체가 차지하는 메모리의 크기가 다르기 때문에, 0으로 채워줌
+    // 이는 각 구조체가 차지하는 메모리의 크기가 다르기 때문에, 0으로 채워줌)
     memset(&servAddr, 0, sizeof(servAddr));
-    // AF_INET : TCP 통신을 사용하겠다는 의미
+    // AF_INET : IPv4 통신을 사용하겠다는 의미
     servAddr.sin_family = AF_INET;
     // INADDR_ANY : 호스트는 루프백으로 오는 모든 요청을 받아들이겠다는 의미
     // htonl() : host order의 방식을 network byte order 방식으로 바꿔줌
