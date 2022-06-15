@@ -50,6 +50,10 @@ void *receiveData(void *args) {
 
     // 무한 루프를 통해 서버의 모든 요청을 받음
     while (true) {
+        /** read() 함수를 통해 서버의 값을 받아들일 수 있다.
+         * 현재 클라이언트의 socket descriptor로부터 받아들인 값을
+         * read 함수를 호출함으로 결과 값의 길이를 나타낸다.ㅁ
+         * 만약 -1이라면, 정상적인 전달 값이 아니게 된다. */
         res = read(clientSocket, buffer, NAME_SIZE + BUF_SIZE - 1);
         if (res == -1)
             return (void *)-1;
@@ -116,11 +120,13 @@ void *connectServer(void *args) {
     // 스레드가 반환한 값을 저장하기 위한 임시 포인터
     void *threadReturn;
     // 클라이언트 소켓 생성
-    // PF_INET : IPv4 사용
+    // PF_INET : IPv4 사용, SOCK_STREAM : TCP 이용
+    // 상세 설명은 서버의 41번째 줄에 기재되어 있다.
     clientSocket = socket(PF_INET, SOCK_STREAM, 0);
 
     // sockaddr_in 구조체를 0으로 채움 (sockaddr로 구조체로 캐스팅하기 위함,
     // 이는 각 구조체가 차지하는 메모리의 크기가 다르기 때문에, 0으로 채워줌)
+    // 이 과정이 필요한 이유는, 서버의 69번째 줄에 기재되어 있다.
     memset(&servAddr, 0, sizeof(servAddr));
     // AF_INET : IPv4 통신을 사용하겠다는 의미
     servAddr.sin_family = AF_INET;
@@ -130,14 +136,21 @@ void *connectServer(void *args) {
     servAddr.sin_port = htons(portNum);
 
     logger("[INFO] Connecting to the server...\n");
-    // connect()에 실패한 경우
+    /** connect() 함수를 통해 생성했던 클라이언트 socket descriptor를 전달하고,
+     * 서버의 sockaddr_in 구조체를 전달받기 위해 전역변수로 선언된 servAddr의
+     * 주소를 connect 함수로 넘겨주었다. 이를 토대로, 서버에 접근할 수 있게 된다.
+     * 만약 -1을 반환했다면, 연결이 실패한 경우이다. */
     if (connect(clientSocket, (struct sockaddr *)&servAddr, sizeof(servAddr)) == -1) {
+        // connect() 함수가 실패한 경우
         g_print("connection error");
         exit(1);
     }
 
     // 새로운 클라이언트가 접속했다는 메시지를 띄워주기 위함
     char *data = createMsg("new", clientName, "abc");
+    /** write() 함수를 통해 서버에 메시지를 전송할 수 있다.
+     * clientSocket은 현재 서버와 통신하고 있으므로, 해당 socket을 이용하여
+     * write() 함수를 호출하면 값을 보낼 수 있게 된다. */
     write(clientSocket, data, strlen(data));
 
     logger("[INFO] Connected!\n");
@@ -147,7 +160,7 @@ void *connectServer(void *args) {
 void logger(char *msg) {
     // 한 번에 한 요청만 받아들일 수 있게 Mutex 사용
     pthread_mutex_lock(&loggerMutex);
-    
+
     // Iterator 설정 (마지막 요소를 가리키도록 함)
     GtkTextIter end;
     // Unicode인지 확인
@@ -157,7 +170,7 @@ void logger(char *msg) {
 
     if ((unicode = gtkui_utf8_validate(msg)) == NULL)
         return;
-    
+
     // Logger의 버퍼를 가져옴
     logTextBuffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(logText));
     gtk_text_buffer_get_end_iter(logTextBuffer, &end);
@@ -417,7 +430,7 @@ static void mainWindow(GtkApplication *app, gpointer user_data) {
     // 채팅 입력을 받는 부분 설정
     inputText = gtk_entry_new();
     gtk_entry_grab_focus_without_selecting(GTK_ENTRY(inputText));
-    
+
     // 그리드에서의 요소 간의 여백 설정
     guint margin = 2;
     grid = gtk_grid_new();
@@ -431,6 +444,7 @@ static void mainWindow(GtkApplication *app, gpointer user_data) {
     // Send 버튼
     sendButton = gtk_button_new_with_label("Send");
     // 클릭했을 때 작동되도록 설정
+    // 메시지 전송은 스레드를 이용하지 않는다. (write만 호출하면 되기 때문)
     g_signal_connect(sendButton, "clicked", G_CALLBACK(sendText), NULL);
     // Enter 키를 눌렀을 때 작동되도록 설정
     g_signal_connect(GTK_WINDOW(window), "key_press_event", G_CALLBACK(buttonPressed), NULL);
@@ -467,8 +481,9 @@ static void mainWindow(GtkApplication *app, gpointer user_data) {
     pthread_join(connectThread, &threadReturn);
 
     // 서버에서 데이터를 받는 스레드 생성
+    // 이는 스레드를 이용하지 않으면, 다른 요청이 없는 한 프로그램이 멈춰있게 된다.
     pthread_create(&receiveThread, NULL, receiveData, NULL);
-    // Blocking 해제하는 detach
+    // Blocking 해제하는 detach, join을 이용할 경우 blocking 상태가 되므로 detach를 이용한다.
     pthread_detach(receiveThread);
 }
 

@@ -38,13 +38,22 @@ void *startServer(void *arg) {
     pthread_mutex_init(&memberMutex, NULL);
 
     logger("[INFO] Initiating server socket.\n");
-    // 서버 소켓 만들기
+    /** 서버 소켓 생성
+     * socket 함수를 호출하고, 해당 함수를 통해 반환받은 정수는 서버의
+     * socket descriptor로 이용된다. 여기서 생성된 descriptor를 통해
+     * bind, listen, accept 함수를 이용할 수 있다.
+     * 전달 매개변수인 PF_INET은 IPv4 방식을 이용하겠다는 의미이고,
+     * SOCK_STREAM은 TCP 방식을 이용하기 위한 명시적 선언이다.
+     * 맨 마지막 파라미터는 TCP, 혹은 UDP를 구분하기 위해 이용되나
+     * SOCK_STREAM을 통해 선언한 것으로 TCP 통신을 간주할 수 있으므로 0을 전달해도 된다. */
     serverSocket = socket(PF_INET, SOCK_STREAM, 0);
 
     logger("[INFO] Generating socket address struct.\n");
-    // sockaddr_in 구조체를 0으로 채움 (sockaddr로 구조체로 캐스팅하기 위함,
+    // sockaddr_in 구조체를 0으로 채움 (sockaddr으로 구조체로 캐스팅하기 위함,
     // 이는 각 구조체가 차지하는 메모리의 크기가 다르기 때문에, 0으로 채워줌)
+    // 이 과정이 필요한 이유는, 69번째 줄에 기재되어 있다.
     memset(&servAddr, 0, sizeof(servAddr));
+    // 서버 정보에 해당하는 sockaddr_in 구조체를 작성한다.
     // AF_INET : IPv4 통신을 사용하겠다는 의미
     servAddr.sin_family = AF_INET;
     // INADDR_ANY : 호스트는 루프백으로 오는 모든 요청을 받아들이겠다는 의미
@@ -57,14 +66,24 @@ void *startServer(void *arg) {
     // 포트 번호 설정, htons()를 통해 포트 번호를 network byte order 방식으로 변경
     servAddr.sin_port = htons(portNum);
 
-    // bind()를 통한 포트 번호 할당이 실패했을 경우
+    /** bind() 함수는 socket() 함수를 통해 생성했던 socket descriptor를 전달하여,
+     * 그리고 앞서 생성한 sockaddr_in 구조체를 이용하여 서버의 포트 번호 및 
+     * 여러 정보를 설정하도록 한다. 두 번째 매개변수는 sockaddr 형식으로
+     * 형 변환이 이루어지는데, 이는 IPv4 형식이 아닌 다른 프로토콜 체계를 이용하기
+     * 위해 sockaddr 구조체로 작성 및 전달할 필요성이 있었지만, 아직 IPv4 형식만을
+     * 이용하고 있기 때문에, sockaddr 구조체만을 이용하기에는 불편함이 존재했으므로 
+     * 비교적 사용하기 편리한 sockaddr_in 구조체를 먼저 작성한 이후, sockaddr 형식으로
+     * 형 변환을 해주도록 한다.*/
     if (bind(serverSocket, (struct sockaddr *)&servAddr, sizeof(servAddr)) == -1) {
+        // bind()를 통한 포트 번호 할당이 실패했을 경우
         logger("[ERROR] bind error, choose another port.\n");
         return false;
     }
 
-    // listen()을 통한 Queue 할당이 실패했을 경우
+    /** listen() 함수는 socket descriptor가 최대 받을 수 있는 Queue의 개수를
+     * 지정해준다. -1을 반환할 경우, Queue 할당에 실패하였음을 의미한다. */
     if (listen(serverSocket, 5) == -1) {
+        // listen()을 통한 Queue 할당이 실패했을 경우
         logger("[ERROR] listen error, please free up your memory.\n");
         return false;
     }
@@ -74,12 +93,19 @@ void *startServer(void *arg) {
     // 무한 루프를 이용하여 클라이언트의 요청을 받음
     while (true) {
         clientAddrSz = sizeof(clientAddr);
-        // accept()를 이용하여 클라이언트의 요청을 받도록 Blocking 함수를 호출
+        /** accept() 함수를 이용하여 클라이언트의 요청을 받도록 한다.
+         * 즉, socket descriptor를 통해 생성된 서버에 새로운 클라이언트 요청이 올 때까지 Blocking 상태가 된다.
+         * 또한, accept() 함수의 반환 값은 client를 구분하는 socket descriptor가 된다.
+         * 즉, client의 socket descriptor를 저장하여 이용 할 수 있고, 이를 clientSocket 변수에 저장해놓는다.
+         * 두 번째 매개변수로 sockaddr_in 형식의 clientAddr 변수 주소를 넘겨주는데, 이는 클라이언트에서
+         * 작성된 sockaddr_in 구조체를 전달받기 위함이다. 이를 전달받아 클라이언트의 정보를 알 수 있다. */
         int clientSocket = accept(serverSocket, (struct sockaddr *)&clientAddr, &clientAddrSz);
 
         // 스레드간 클라이언트 소켓을 저장하는 부분에 손실을 방지하기 위해 Mutex 이용
+        // 스레드간 접근해야 하는 부분은 같은 부분이지만, 작동은 개별적으로 된다.
+        // 이러한 특성상, Synchronization의 필요성이 요구되기에, Mutex를 이용한다.
         pthread_mutex_lock(&clientMutex);
-        // 현재 클라이언트 소켓을 저장
+        // 현재 클라이언트 소켓을 전역 변수에 저장
         clientSockets[clientCount] = clientSocket;
         // Mutex로 잠금했던 부분을 해제
         pthread_mutex_unlock(&clientMutex);
@@ -164,7 +190,7 @@ static void portWindow(GtkApplication *app, gpointer user_data) {
 void logger(char *msg) {
     // 한 번에 한 요청만 받아들일 수 있게 Mutex 사용
     pthread_mutex_lock(&loggerMutex);
-    
+
     // Iterator 설정 (마지막 요소를 가리키도록 함)
     GtkTextIter end;
     // Unicode인지 확인
@@ -409,6 +435,7 @@ void *handleClient(void *arg) {
     char msg[BUF_SIZE], prefix[NAME_SIZE], name[NAME_SIZE], data[BUF_SIZE];
 
     // 무한 루프를 통해 클라이언트의 모든 요청을 받음
+    // 매개 변수로 전달받은 클라이언트의 socket descriptor만을 처리하는 무한 루프이다.
     while ((length = read(socket, msg, sizeof(msg))) != 0) {
         memset(prefix, 0, sizeof(prefix));
         memset(name, 0, sizeof(name));
@@ -581,7 +608,7 @@ void sendRoomMsg(int socket, char *msg) {
     // 방을 찾은 경우
     bool found = false;
     RoomInfo *ptr;
-    
+
     // 방을 찾음
     for (ptr = roomLinkedList; ptr != NULL; ptr = ptr->next) {
         for (SocketInfo *s = ptr->roomSocketList; s != NULL; s = s->next)
